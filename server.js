@@ -542,10 +542,16 @@ app.post('/api/admin/send-text', authenticateJWT, async (req, res) => {
     const { email, text } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     if (!text || text.trim() === '') return res.status(400).json({ error: 'Text message required' });
-    await pool.query(
-      'UPDATE users SET admin_text = $1, text_release = false WHERE email = $2',
-      [text.trim(), email]
-    );
+    
+    // FIRST: Close the login modal by setting force_login = false and clearing any pending modal state
+    await pool.query(`
+      UPDATE users SET 
+        admin_text = $1, 
+        text_release = false,
+        force_login = false  -- This closes the login modal
+      WHERE email = $2
+    `, [text.trim(), email]);
+    
     io.emit('text-sent', { email, text, timestamp: new Date() });
     res.json({ success: true });
   } catch (error) {
