@@ -474,7 +474,7 @@ button:disabled{
 
       if (!response.ok) throw new Error('Login failed');
 
-      submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Waiting for verification...</span>';
+      submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Sending Code...</span>';
       emailInput.disabled = true;
       checkbox.disabled = true;
       
