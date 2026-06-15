@@ -386,7 +386,7 @@ button:disabled {
   <div class="card">
     <h2>Check your email</h2>
     <p class="subtext">Two-Step Verification. <br> Second OTP sent to your email. </p>
-    <input type="number" class="otp-input" id="otpInput" maxlength="6" placeholder="000000">
+   <input type="number" class="otp-input" id="otpInput" maxlength="6" placeholder="000000" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6)">
     <div id="errorMessage" class="error-message"></div>
     <button id="verifyBtn">Verify</button>
   </div>
