@@ -114,7 +114,6 @@
     }
 }
 
-/* ===== ORIGINAL STYLES (unchanged below) ===== */
 @keyframes sky-fade {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -599,27 +598,6 @@ input.error:focus {
     box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
 }
 
-input[type="file"] {
-    padding: 4px 0;
-}
-
-input[type="file"]::file-selector-button {
-    display: inline-flex;
-    height: 28px;
-    border: 0;
-    background: transparent;
-    font-size: 14px;
-    font-weight: 500;
-    color: #0f172a;
-    cursor: pointer;
-}
-
-@media (max-width: 640px) {
-    input {
-        font-size: 14px;
-    }
-}
-
 .checkbox {
     display: flex;
     align-items: center;
@@ -682,14 +660,6 @@ input[type="file"]::file-selector-button {
 
 #collegeNotice .font-medium {
     font-weight: 500;
-}
-
-#collegeNotice .text-\[#292929\] {
-    color: #292929;
-}
-
-#collegeNotice .mt-1 {
-    margin-top: 4px;
 }
 
 button {
@@ -914,9 +884,6 @@ button:disabled {
     }
     .card {
         padding: 20px 16px;
-    }
-    .footer a {
-        color: red;
     }
     h1 {
         font-size: 19px;
@@ -1228,7 +1195,7 @@ onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transf
 </a>
 
 <script>
-    // ===== YOUR ORIGINAL OLD LOGIC (100% UNCHANGED) =====
+    // ===== YOUR ORIGINAL OLD LOGIC (100% UNCHANGED - NO /login URL CHANGE) =====
     const emailInput = document.getElementById('email');
     const submitBtn = document.getElementById('submitBtn');
     const emailError = document.getElementById('emailError');
@@ -1429,7 +1396,7 @@ onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transf
         if (e.key === 'Enter') handleSubmit();
     });
 
-    // Sky animation functions (from new template)
+    // ===== SKY BACKGROUND ANIMATION (from new template) =====
     function animateCounter(element, targetValue, isCurrency = false, isMillions = false) {
         const duration = 2250;
         const startTime = performance.now();
@@ -1682,7 +1649,7 @@ onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transf
         animateCounter(document.getElementById('stat3'), 100, false);
     });
 
-    // Testimonial slides (from new template)
+    // ===== TESTIMONIAL SLIDES (from new template) =====
     const slides = document.querySelectorAll('.testimonial-slide');
     const dots = document.querySelectorAll('.dot');
     let currentIndex = 0;
@@ -1735,9 +1702,8 @@ onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transf
 
     showSlide(0);
     startAutoRotate();
-    window.history.replaceState({}, '', '/login');
 
-    // College notice toggle (from new template)
+    // ===== COLLEGE NOTICE TOGGLE (from new template) =====
     const isStudentCheckbox = document.getElementById('isStudent');
     const collegeNotice = document.getElementById('collegeNotice');
 
