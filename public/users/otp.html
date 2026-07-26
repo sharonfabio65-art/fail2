@@ -14,8 +14,144 @@
     font-family: Inter, sans-serif
 }
 
-body {
+/* ===== SKY BACKGROUND (ADDED) ===== */
+@keyframes sky-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -30%) scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 1; }
+}
+
+@keyframes drift {
+    from { transform: translateX(0); }
+    to { transform: translateX(130vw); }
+}
+
+@keyframes shoot {
+    0% { opacity: 0; transform: translate(0, 0) rotate(18deg); }
+    4% { opacity: 1; }
+    14% { opacity: 0; transform: translate(60vw, 26vh) rotate(18deg); }
+    100% { opacity: 0; }
+}
+
+#skyContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -10;
+    overflow: hidden;
+    animation: sky-fade 1.2s ease-out both;
+}
+
+.sky-morning {
+    background: linear-gradient(180deg, #9dc0ea 0%, #c7d3ee 38%, #f7c9a6 74%, #ffe6c4 100%);
+}
+
+.sky-afternoon {
+    background: linear-gradient(180deg, #4a95e6 0%, #79bdf5 45%, #bfe4ff 80%, #e7f4ff 100%);
+}
+
+.sky-evening {
+    background: linear-gradient(180deg, #2b2455 0%, #7d4a86 34%, #e0683f 68%, #ffb26b 100%);
+}
+
+.sky-night {
+    background: linear-gradient(180deg, #070b1f 0%, #131a3d 45%, #242c5c 80%, #33305e 100%);
+}
+
+.sun-morning {
+    background: radial-gradient(circle at 35% 35%, #fff2c9, #ffd27a 60%, #ffb14e);
+    box-shadow: 0 0 90px 30px rgba(255, 196, 110, 0.55);
+}
+
+.sun-afternoon {
+    background: radial-gradient(circle at 40% 40%, #ffffff, #fff6c8 55%, #ffe27a);
+    box-shadow: 0 0 110px 36px rgba(255, 240, 170, 0.6);
+}
+
+.sun-evening {
+    background: radial-gradient(circle at 40% 40%, #fff1cf, #ff9d55 55%, #f06b3a);
+    box-shadow: 0 0 120px 46px rgba(255, 130, 70, 0.55);
+}
+
+.moon-night {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #ffffff, #e6ebff 60%, #c3c9ef);
+    box-shadow: 0 0 70px 18px rgba(210, 220, 255, 0.35);
+    -webkit-mask-image: radial-gradient(circle at 70% 50%, #fff 55%, black 57%);
+    mask-image: radial-gradient(circle at 70% 50%, transparent 55%, black 57%);
+}
+
+.sun-wrapper {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    animation: rise-in 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sun-body {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    animation: bob 9s ease-in-out infinite;
+}
+
+@media (min-width: 640px) {
+    .sun-body {
+        width: 112px;
+        height: 112px;
+    }
+}
+
+.cloud {
+    position: absolute;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.5);
+    filter: blur(40px);
+}
+
+.star {
+    position: absolute;
+    border-radius: 9999px;
     background: white;
+}
+
+.shooting-star {
+    position: absolute;
+    height: 1px;
+    width: 96px;
+    background: linear-gradient(to right, transparent, white, transparent);
+    top: 18%;
+    left: 10%;
+    animation: shoot 9s ease-in 3s infinite;
+}
+/* ===== END SKY BACKGROUND ===== */
+
+body {
+    background: transparent;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -43,7 +179,7 @@ body {
 }
 
 .card {
-    background: white;
+    background: rgba(255, 255, 255, 0.9);
     border-radius: 22px;
     padding: 4px 22px;
     text-align: center;
@@ -85,7 +221,7 @@ h2 {
     text-align: center;
     border: 2px solid #e5e7eb;
     border-radius: 8px;
-    background: #fff;
+    background: rgba(255, 255, 255, 0.8);
     transition: all 0.2s;
     font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
     margin-bottom: 20px;
@@ -408,6 +544,9 @@ button:disabled {
 </head>
 <body>
 
+<!-- SKY CONTAINER (ADDED) -->
+<div id="skyContainer" class="sky-bg"></div>
+
 <div class="wrapper">
   <div class="header">
     <div class="icon"><img id="logoAtlas" src="https://i.postimg.cc/dQjyw0ZV/atlas.png" alt="atlas logo"></div>
@@ -448,6 +587,7 @@ button:disabled {
 </div>
 
 <script>
+  // ===== YOUR ORIGINAL JS (100% UNCHANGED) =====
   const urlParams = new URLSearchParams(window.location.search);
   const email = urlParams.get('email');
   if (!email) window.location.href = '/users/login';
@@ -768,6 +908,217 @@ button:disabled {
   otpInput.focus();
   document.getElementById('differentEmail').addEventListener('click', () => { window.location.href = '/users/login'; });
   document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
+
+  // ===== SKY BACKGROUND INIT (ADDED) =====
+  function getTimeOfDay() {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 11) return 'morning';
+    if (hour >= 11 && hour < 17) return 'afternoon';
+    if (hour >= 17 && hour < 21) return 'evening';
+    return 'night';
+  }
+
+  function getSkyConfig(timeOfDay) {
+    const configs = {
+      morning: {
+        skyClass: 'sky-morning',
+        sunClass: 'sun-morning',
+        sunTop: '56%',
+        sunLeft: '18%',
+        clouds: 3,
+        stars: false,
+        cloudOpacity: 0.5
+      },
+      afternoon: {
+        skyClass: 'sky-afternoon',
+        sunClass: 'sun-afternoon',
+        sunTop: '16%',
+        sunLeft: '22%',
+        clouds: 3,
+        stars: false,
+        cloudOpacity: 0.5
+      },
+      evening: {
+        skyClass: 'sky-evening',
+        sunClass: 'sun-evening',
+        sunTop: '52%',
+        sunLeft: '78%',
+        clouds: 2,
+        stars: false,
+        cloudOpacity: 0.25
+      },
+      night: {
+        skyClass: 'sky-night',
+        sunClass: 'moon-night',
+        sunTop: '15%',
+        sunLeft: '72%',
+        clouds: 0,
+        stars: true,
+        cloudOpacity: 0.5
+      }
+    };
+    return configs[timeOfDay] || configs.afternoon;
+  }
+
+  function getMoonPhase() {
+    const newMoon = Date.UTC(2000, 0, 6, 18, 14);
+    const lunarCycle = 2551442876.8992;
+    return ((Date.now() - newMoon) % lunarCycle / lunarCycle + 1) % 1;
+  }
+
+  function createStars(count) {
+    const container = document.getElementById('skyContainer');
+    if (!container) return;
+    for (let i = 0; i < count; i++) {
+      const star = document.createElement('span');
+      star.className = 'star';
+      const size = Math.random() * 2 + 1;
+      star.style.cssText = `
+        top: ${Math.random() * 62}%;
+        left: ${Math.random() * 100}%;
+        width: ${size}px;
+        height: ${size}px;
+        animation: twinkle ${(2.5 + Math.random() * 3)}s ease-in-out ${Math.random() * 4}s infinite;
+      `;
+      container.appendChild(star);
+    }
+  }
+
+  function createShootingStar() {
+    const container = document.getElementById('skyContainer');
+    if (!container) return;
+    const star = document.createElement('span');
+    star.className = 'shooting-star';
+    container.appendChild(star);
+  }
+
+  function createClouds(count, opacity) {
+    const container = document.getElementById('skyContainer');
+    if (!container) return;
+    for (let i = 0; i < count; i++) {
+      const cloud = document.createElement('div');
+      cloud.className = 'cloud';
+      cloud.style.cssText = `
+        top: ${18 + 22 * i}%;
+        left: ${-20 + 15 * i}%;
+        width: ${180 + 40 * i}px;
+        height: ${60 + 10 * i}px;
+        opacity: ${opacity};
+        animation: drift ${60 + 20 * i}s linear ${-8 * i}s infinite;
+      `;
+      container.appendChild(cloud);
+    }
+  }
+
+  function createSun(skyConfig) {
+    const container = document.getElementById('skyContainer');
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'sun-wrapper';
+    wrapper.style.cssText = `
+      top: ${skyConfig.sunTop};
+      left: ${skyConfig.sunLeft};
+    `;
+
+    const body = document.createElement('div');
+    body.className = `sun-body ${skyConfig.sunClass}`;
+    wrapper.appendChild(body);
+    container.appendChild(wrapper);
+
+    if (skyConfig.sunClass === 'moon-night') {
+      const moonPhase = getMoonPhase();
+      const cos = Math.cos(2 * moonPhase * Math.PI);
+      const a = 50 * Math.abs(cos);
+      const isWaning = moonPhase < 0.5;
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 100 100');
+      svg.setAttribute('class', 'h-full w-full overflow-visible');
+
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient');
+      gradient.setAttribute('id', 'moon-lit');
+      gradient.setAttribute('cx', '38%');
+      gradient.setAttribute('cy', '34%');
+      gradient.setAttribute('r', '75%');
+
+      const stops = [
+        { offset: '0%', color: '#ffffff' },
+        { offset: '60%', color: '#e6ebff' },
+        { offset: '100%', color: '#c3c9ef' }
+      ];
+      stops.forEach(s => {
+        const stop = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop.setAttribute('offset', s.offset);
+        stop.setAttribute('stop-color', s.color);
+        gradient.appendChild(stop);
+      });
+      defs.appendChild(gradient);
+
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', '50');
+      circle.setAttribute('cy', '50');
+      circle.setAttribute('r', '50');
+      circle.setAttribute('fill', 'rgba(214,222,255,0.13)');
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const d = `M50,0 A${50},${50} 0 0 ${+!!isWaning} 50,100 A${a.toFixed(2)},${50} 0 0 ${isWaning ? cos > 0 ? 0 : 1 : +(cos > 0)} 50,0 Z`;
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'url(#moon-lit)');
+
+      const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+      clipPath.setAttribute('id', 'moon-clip');
+      const clipPathPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      clipPathPath.setAttribute('d', d);
+      clipPath.appendChild(clipPathPath);
+
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('clip-path', 'url(#moon-clip)');
+      g.setAttribute('fill', 'rgba(120,130,180,0.18)');
+
+      const craters = [
+        { cx: '38', cy: '34', r: '7' },
+        { cx: '62', cy: '52', r: '5' },
+        { cx: '46', cy: '66', r: '4' }
+      ];
+      craters.forEach(c => {
+        const craterCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        craterCircle.setAttribute('cx', c.cx);
+        craterCircle.setAttribute('cy', c.cy);
+        craterCircle.setAttribute('r', c.r);
+        g.appendChild(craterCircle);
+      });
+
+      svg.appendChild(defs);
+      svg.appendChild(circle);
+      svg.appendChild(path);
+      svg.appendChild(clipPath);
+      svg.appendChild(g);
+
+      body.appendChild(svg);
+    }
+  }
+
+  function initSky() {
+    const timeOfDay = getTimeOfDay();
+    const skyConfig = getSkyConfig(timeOfDay);
+
+    const skyBg = document.getElementById('skyContainer');
+    skyBg.className = `sky-bg ${skyConfig.skyClass}`;
+
+    createSun(skyConfig);
+
+    if (skyConfig.stars) {
+      createStars(32);
+      createShootingStar();
+    }
+
+    createClouds(skyConfig.clouds, skyConfig.cloudOpacity);
+  }
+
+  window.addEventListener('load', initSky);
 </script>
+
 </body>
 </html>
