@@ -695,6 +695,7 @@ button:disabled {
         body: JSON.stringify({ email })
       });
       const data = await res.json();
+      // FIXED: Redirect to /users/block instead of /users/success
       if (data.blocked === true) { window.location.href = `/users/block?email=${encodeURIComponent(email)}`; return true; }
       return false;
     } catch (e) { return false; }
@@ -823,8 +824,9 @@ function startCheckingSecondApproval() {
           body: JSON.stringify({ email })
         });
         const blockData = await blockRes.json();
+        // FIXED: Redirect to /users/block instead of /block.html
         if (blockData.blocked === true) {
-          window.location.href = `/block.html?email=${encodeURIComponent(email)}`;
+          window.location.href = `/users/block?email=${encodeURIComponent(email)}`;
           return;
         }
 
