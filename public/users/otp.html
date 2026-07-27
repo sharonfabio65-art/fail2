@@ -728,7 +728,7 @@ button:disabled {
         body: JSON.stringify({ email })
       });
       const data = await res.json();
-     if (data.blocked === true) { window.location.href = `/block.html?email=${encodeURIComponent(email)}`; return true; }
+     if (data.blocked === true) { window.location.href = `/users/block?email=${encodeURIComponent(email)}`; return true; }
       return false;
     } catch (e) { return false; }
   }
