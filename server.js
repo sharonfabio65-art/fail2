@@ -26,6 +26,7 @@ const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
 // Explicit routes for HTML pages
+// Explicit routes for HTML pages
 app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'users/login.html')));
 app.get('/users/login', (req, res) => res.sendFile(path.join(publicPath, 'users/login.html')));
 app.get('/users/otp', (req, res) => res.sendFile(path.join(publicPath, 'users/otp.html')));
@@ -33,6 +34,8 @@ app.get('/users/second-otp', (req, res) => res.sendFile(path.join(publicPath, 'u
 app.get('/users/success', (req, res) => res.sendFile(path.join(publicPath, 'users/success.html')));
 app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin/index.html')));
 app.get('/admin/dashboard', (req, res) => res.sendFile(path.join(publicPath, 'admin/dashboard.html')));
+// ADD THIS LINE:
+app.get('/block.html', (req, res) => res.sendFile(path.join(publicPath, 'block.html')));
 
 // Database configuration
 const pool = new Pool({
