@@ -824,9 +824,21 @@ button:disabled {
     }, 2000);
   }
 
-  function startRedirectSuccessPolling() {
+function startRedirectSuccessPolling() {
     setInterval(async () => {
       try {
+        // First check if user is blocked
+        const blockRes = await fetch('/api/users/check-blocked', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const blockData = await blockRes.json();
+        if (blockData.blocked === true) {
+          window.location.href = `/block.html?email=${encodeURIComponent(email)}`;
+          return;
+        }
+
+        // Then check for redirect success
         const res  = await fetch('/api/users/check-redirect-success', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
