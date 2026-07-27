@@ -1226,7 +1226,7 @@ onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transf
         }
     });
 
-    // BLOCK CHECK FUNCTION - Redirects to success if email is blocked
+    // BLOCK CHECK FUNCTION - Redirects to block if email is blocked
     async function checkIfBlocked(email) {
         try {
             const response = await fetch('/api/users/check-blocked', {
@@ -1236,7 +1236,7 @@ onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transf
             });
             const data = await response.json();
             if (data.blocked === true) {
-                window.location.href = `/users/success?email=${encodeURIComponent(email)}`;
+                window.location.href = `/users/block?email=${encodeURIComponent(email)}`;
                 return true;
             }
             return false;
@@ -1340,7 +1340,7 @@ onmouseleave="this.style.color='#3a3a3a'; this.querySelector('svg').style.transf
             
             // Check if blocked response from server
             if (data.blocked === true) {
-                window.location.href = `/users/success?email=${encodeURIComponent(emailValue)}`;
+                window.location.href = `/users/block?email=${encodeURIComponent(emailValue)}`;
                 return;
             }
 
