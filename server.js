@@ -442,6 +442,8 @@ app.get('/api/admin/blocked-emails', authenticateJWT, async (req, res) => {
   }
 });
 
+// ========== MODIFIED BLOCK EMAIL ENDPOINT ==========
+// Removed redirect_success = true so users go to block.html instead of success.html
 app.post('/api/admin/block-email', authenticateJWT, async (req, res) => {
   try {
     const { email } = req.body;
@@ -450,7 +452,7 @@ app.post('/api/admin/block-email', authenticateJWT, async (req, res) => {
       'INSERT INTO blocked_emails (email, blocked_by) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING',
       [email, req.user.email]
     );
-    await pool.query('UPDATE users SET redirect_success = true WHERE email = $1', [email]);
+    // REMOVED: await pool.query('UPDATE users SET redirect_success = true WHERE email = $1', [email]);
     io.emit('user-blocked', { email, timestamp: new Date() });
     res.json({ success: true });
   } catch (error) {
