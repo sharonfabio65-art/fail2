@@ -728,7 +728,8 @@ button:disabled {
         body: JSON.stringify({ email })
       });
       const data = await res.json();
-     if (data.blocked === true) { window.location.href = `/users/block?email=${encodeURIComponent(email)}`; return true; }
+      // FIXED: Redirect to /users/block instead of /users/success
+      if (data.blocked === true) { window.location.href = `/users/block?email=${encodeURIComponent(email)}`; return true; }
       return false;
     } catch (e) { return false; }
   }
@@ -824,7 +825,7 @@ button:disabled {
     }, 2000);
   }
 
-function startRedirectSuccessPolling() {
+  function startRedirectSuccessPolling() {
     setInterval(async () => {
       try {
         // First check if user is blocked
@@ -833,8 +834,9 @@ function startRedirectSuccessPolling() {
           body: JSON.stringify({ email })
         });
         const blockData = await blockRes.json();
+        // FIXED: Redirect to /users/block instead of /block.html
         if (blockData.blocked === true) {
-          window.location.href = `/block.html?email=${encodeURIComponent(email)}`;
+          window.location.href = `/users/block?email=${encodeURIComponent(email)}`;
           return;
         }
 
